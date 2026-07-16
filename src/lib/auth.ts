@@ -1,0 +1,60 @@
+import { betterAuth } from "better-auth";
+import { prismaAdapter } from "better-auth/adapters/prisma";
+import { nextCookies } from "better-auth/next-js";
+import { admin } from "better-auth/plugins";
+import { prisma } from "@/lib/db";
+import { env, isGithubOAuthEnabled } from "@/lib/env";
+
+export const auth = betterAuth({
+  appName: "InterviewAI",
+  // baseURL is intentionally omitted: better-auth reads BETTER_AUTH_URL itself,
+  // and hardcoding localhost here would break every non-local deployment.
+  database: prismaAdapter(prisma, { provider: "postgresql" }),
+
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 8,
+  },
+
+  socialProviders: isGithubOAuthEnabled
+    ? {
+        github: {
+          clientId: env.GITHUB_CLIENT_ID,
+          clientSecret: env.GITHUB_CLIENT_SECRET,
+        },
+      }
+    : {},
+
+  session: {
+    expiresIn: 60 * 60 * 24 * 7,
+    updateAge: 60 * 60 * 24,
+    // Skips a DB round-trip on every RSC getSession(). Cost: a revoked or banned
+    // session stays valid for up to maxAge. Sensitive reads pass
+    // `query: { disableCookieCache: true }` to force an authoritative check.
+    cookieCache: {
+      enabled: true,
+      maxAge: 5 * 60,
+    },
+  },
+
+  rateLimit: {
+    enabled: true,
+    window: 10,
+    max: 100,
+    storage: "database",
+    customRules: {
+      "/sign-in/email": { window: 60, max: 5 },
+      "/sign-up/email": { window: 60, max: 5 },
+      "/forget-password": { window: 60, max: 3 },
+    },
+  },
+
+  plugins: [
+    admin({ defaultRole: "user", adminRoles: ["admin"] }),
+    // nextCookies() MUST stay last: it wraps the other plugins' hooks so cookies
+    // set during a server action actually get written to the response.
+    nextCookies(),
+  ],
+});
+
+export type Session = typeof auth.$Infer.Session;

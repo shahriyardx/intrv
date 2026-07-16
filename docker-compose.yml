@@ -1,0 +1,23 @@
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: interview-ai-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: interview
+      POSTGRES_PASSWORD: interview
+      POSTGRES_DB: interview_ai
+    ports:
+      - "5433:5432"
+    # Postgres 18+ expects a single mount at /var/lib/postgresql; it places data
+    # in a version-specific subdirectory so pg_upgrade --link can work.
+    volumes:
+      - interview-ai-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U interview -d interview_ai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  interview-ai-pgdata:

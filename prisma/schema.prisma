@@ -1,0 +1,233 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+// Prisma 7 removed `url` from the schema. The migration/introspection URL comes
+// from prisma.config.ts; the runtime connection comes from the driver adapter
+// passed to the PrismaClient constructor in src/lib/db.ts.
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// better-auth
+//
+// These tables are owned by better-auth. The `role`/`banned`/`banReason`/
+// `banExpires` and `impersonatedBy` fields come from the admin plugin, and
+// `rateLimit` exists because rateLimit.storage is "database".
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // admin plugin
+  role       String?
+  banned     Boolean?  @default(false)
+  banReason  String?
+  banExpires DateTime?
+
+  sessions           Session[]
+  accounts           Account[]
+  interviewSessions  InterviewSession[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // admin plugin
+  impersonatedBy String?
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model RateLimit {
+  id          String @id
+  key         String @unique
+  count       Int
+  // better-auth stores this as a JS epoch milliseconds value (bigint: true).
+  lastRequest BigInt
+
+  @@map("rateLimit")
+}
+
+// ---------------------------------------------------------------------------
+// Domain
+// ---------------------------------------------------------------------------
+
+enum QuestionType {
+  MCQ
+  TRUE_FALSE
+  SHORT_ANSWER
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum SessionStatus {
+  GENERATING
+  READY
+  SUBMITTED
+  GRADED
+  FAILED
+  ABANDONED
+}
+
+/// An attempt at a quiz/interview. Owned by either a signed-in user (userId) or
+/// an anonymous visitor (guestId, from a signed httpOnly cookie) — exactly one
+/// of the two is set. See ownerWhere() in the DAL.
+model InterviewSession {
+  id          String        @id @default(uuid())
+  userId      String?
+  guestId     String?
+  /// Unguessable public id; null until the user opts into sharing.
+  shareId     String?       @unique
+  topic       String        @db.VarChar(120)
+  difficulty  Difficulty
+  status      SessionStatus @default(GENERATING)
+  /// Total questions requested. Persisted so a partially-generated session
+  /// still knows its target.
+  questionCount Int
+  timeLimitMs Int?
+  /// Server-authoritative deadline. The client timer is decoration; this is
+  /// what submit() enforces.
+  expiresAt   DateTime?     @db.Timestamptz(3)
+  startedAt   DateTime?     @db.Timestamptz(3)
+  submittedAt DateTime?     @db.Timestamptz(3)
+  gradedAt    DateTime?     @db.Timestamptz(3)
+  /// Percentage 0-100. Decimal, never Float — this is a user-visible grade.
+  score       Decimal?      @db.Decimal(5, 2)
+  /// Populated when status = FAILED so the UI can explain itself.
+  error       String?
+  createdAt   DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime      @updatedAt @db.Timestamptz(3)
+
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions Question[]
+  aiCalls   AiCall[]
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([guestId, createdAt(sort: Desc)])
+  @@index([status])
+  @@map("interview_session")
+}
+
+/// A generated question. `answerKey` and `explanation` are secret until the
+/// session is graded — see toClientQuestion() in the DAL.
+model Question {
+  id          String       @id @default(uuid())
+  sessionId   String
+  index       Int
+  type        QuestionType
+  prompt      String
+  /// MCQ only: [{ key: "a", text: "..." }]. Null for TRUE_FALSE/SHORT_ANSWER.
+  choices     Json?        @db.JsonB
+  /// MCQ: { key: "a" } · TRUE_FALSE: { value: true } · SHORT_ANSWER:
+  /// { expected: "...", keyPoints: [...] }. NEVER sent to the client pre-grading.
+  answerKey   Json         @db.JsonB
+  explanation String?
+  /// Concept tags driving the weakness rollup in analytics.
+  concepts    String[]
+
+  session InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  answer  Answer?
+
+  @@unique([sessionId, index])
+  @@map("question")
+}
+
+model Answer {
+  id         String   @id @default(uuid())
+  questionId String   @unique
+  /// MCQ: { key: "a" } · TRUE_FALSE: { value: true } · SHORT_ANSWER: { text: "..." }
+  response   Json     @db.JsonB
+  isCorrect  Boolean?
+  /// 0-100. Supports partial credit on short answers.
+  score      Decimal? @db.Decimal(5, 2)
+  feedback   String?
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@map("answer")
+}
+
+/// One row per DeepSeek request: cost, latency, and prefix-cache effectiveness.
+/// Written via after() so tracking never delays a response.
+model AiCall {
+  id                    String   @id @default(uuid())
+  sessionId             String?
+  model                 String
+  /// "generate" | "grade"
+  purpose               String
+  promptCacheHitTokens  Int      @default(0)
+  promptCacheMissTokens Int      @default(0)
+  outputTokens          Int      @default(0)
+  costUsd               Decimal  @default(0) @db.Decimal(10, 6)
+  latencyMs             Int
+  ok                    Boolean
+  errorCode             String?
+  attempts              Int      @default(1)
+  createdAt             DateTime @default(now()) @db.Timestamptz(3)
+
+  session InterviewSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt(sort: Desc)])
+  @@index([ok])
+  @@map("ai_call")
+}
