@@ -37,7 +37,7 @@ export function UserMenu({
   user,
   isAdmin = false,
 }: {
-  user: { name: string; email: string } | null;
+  user: { name: string; email: string; image?: string | null } | null;
   isAdmin?: boolean;
 }) {
   const router = useRouter();
@@ -56,7 +56,7 @@ export function UserMenu({
     );
   }
 
-  const { name, email } = user;
+  const { name, email, image } = user;
 
   async function onSignOut() {
     setSigningOut(true);
@@ -77,12 +77,31 @@ export function UserMenu({
           aria-label={`Account — ${name || email}`}
           className="ml-1"
         >
-          <span
-            aria-hidden
-            className="flex size-7 items-center justify-center border bg-secondary font-mono text-[0.5625rem] text-secondary-foreground uppercase"
-          >
-            {initials(name, email)}
-          </span>
+          {image ? (
+            // A plain img, not next/image: this is an arbitrary provider URL
+            // (Google today, whoever tomorrow), and putting it through the
+            // optimizer would mean allow-listing every provider's CDN in
+            // next.config and proxying a 32px avatar through our own server for
+            // nothing. referrerPolicy is required — Google serves a 403 to a
+            // hotlink that sends a referrer.
+            // biome-ignore lint/performance/noImgElement: remote avatar from an arbitrary OAuth provider
+            <img
+              src={image}
+              alt=""
+              aria-hidden
+              width={28}
+              height={28}
+              referrerPolicy="no-referrer"
+              className="size-7 rounded-full border object-cover"
+            />
+          ) : (
+            <span
+              aria-hidden
+              className="flex size-7 items-center justify-center border bg-secondary font-mono text-[0.5625rem] text-secondary-foreground uppercase"
+            >
+              {initials(name, email)}
+            </span>
+          )}
         </Button>
       </DropdownMenuTrigger>
 

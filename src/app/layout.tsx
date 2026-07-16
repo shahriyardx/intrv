@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, JetBrains_Mono, Newsreader } from "next/font/google";
-import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { env } from "@/lib/env";
 import { cn } from "@/lib/utils";
@@ -40,10 +39,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fbfaf7" },
-    { media: "(prefers-color-scheme: dark)", color: "#131312" },
-  ],
+  // Dark-only, so one colour and a fixed scheme — telling the browser otherwise
+  // makes it paint form controls and scrollbars for a theme we never render.
+  themeColor: "#0e0d0b",
+  colorScheme: "dark",
 };
 
 export default function RootLayout({
@@ -54,7 +53,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      // The app is dark-only: there is no theme switch, so the class is fixed
+      // here rather than resolved at runtime. The light tokens in globals.css
+      // stay as the base that this overrides.
       className={cn(
+        "dark",
         "h-full",
         "antialiased",
         geistSans.variable,
@@ -64,15 +67,8 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <TRPCReactProvider>{children}</TRPCReactProvider>
-          <Toaster />
-        </ThemeProvider>
+        <TRPCReactProvider>{children}</TRPCReactProvider>
+        <Toaster />
       </body>
     </html>
   );

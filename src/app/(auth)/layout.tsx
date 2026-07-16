@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 /**
  * Auth gets a stripped shell rather than SiteHeader: a "New interview" button
@@ -20,7 +19,6 @@ export default function AuthLayout({
             className="h-1.5 w-1.5 rounded-full bg-accent transition-transform group-hover:scale-125"
           />
         </Link>
-        <ThemeToggle />
       </header>
       <main className="mx-auto grid w-full max-w-5xl flex-1 grid-cols-1 items-start gap-12 px-6 py-10 lg:grid-cols-[1fr_20rem] lg:gap-16 lg:py-20 xl:grid-cols-[1fr_22rem]">
         {children}

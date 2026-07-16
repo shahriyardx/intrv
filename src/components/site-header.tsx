@@ -1,5 +1,5 @@
+import { PlusIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -21,10 +21,24 @@ export function SiteHeader({ children }: { children?: React.ReactNode }) {
           />
         </Link>
         <nav className="flex items-center gap-1">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/start">New interview</Link>
+          {/* The one action the whole product exists for, and the one place the
+              accent earns being spent: it appears once per page, so it stays a
+              signal rather than decoration. Ghost made it read as a passive
+              link next to Sign in. */}
+          <Button
+            asChild
+            size="sm"
+            className="group mr-1 gap-1.5 bg-accent font-medium text-accent-foreground shadow-none hover:bg-accent/85"
+          >
+            <Link href="/start">
+              <PlusIcon
+                aria-hidden
+                className="size-3.5 transition-transform duration-200 group-hover:rotate-90"
+                weight="bold"
+              />
+              New interview
+            </Link>
           </Button>
-          <ThemeToggle />
           {children}
         </nav>
       </div>

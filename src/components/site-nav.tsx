@@ -37,7 +37,11 @@ async function SessionNav() {
     // Only the two fields the menu renders cross to the client — never the
     // session row. See the note in UserMenu.
     <UserMenu
-      user={{ name: session.user.name, email: session.user.email }}
+      user={{
+        name: session.user.name,
+        email: session.user.email,
+        image: session.user.image ?? null,
+      }}
       isAdmin={admin}
     />
   );

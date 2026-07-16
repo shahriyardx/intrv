@@ -5,7 +5,6 @@ import {
 } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,7 +59,6 @@ export default function DesignPage() {
             </p>
           </Prose>
         </div>
-        <ThemeToggle />
       </header>
 
       <Separator className="my-12" />
