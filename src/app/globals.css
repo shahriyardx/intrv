@@ -4,12 +4,25 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ---------------------------------------------------------------------------
+   InterviewAI design system — "editorial technical"
+
+   Warm paper + near-black ink, an editorial serif for display, a sans for
+   reading, and mono for anything that is data. One acid accent, used scarcely:
+   scarcity is what keeps it reading as deliberate rather than decorative.
+
+   Chart hues are the dataviz reference palette, validated against these exact
+   surfaces (see --chart-*). Do not hand-tune them.
+--------------------------------------------------------------------------- */
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-mono);
-  --font-heading: var(--font-mono);
+  --font-mono: var(--font-jetbrains-mono);
+  --font-display: var(--font-newsreader);
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -18,15 +31,21 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
+
   --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -39,92 +58,221 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+
+  /* Grading states. Always paired with an icon + label — never color alone. */
+  --color-correct: var(--correct);
+  --color-correct-foreground: var(--correct-foreground);
+  --color-correct-muted: var(--correct-muted);
+  --color-partial: var(--partial);
+  --color-partial-foreground: var(--partial-foreground);
+  --color-partial-muted: var(--partial-muted);
+  --color-incorrect: var(--incorrect);
+  --color-incorrect-foreground: var(--incorrect-foreground);
+  --color-incorrect-muted: var(--incorrect-muted);
+
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-xl: calc(var(--radius) * 1.5);
+  --radius-2xl: calc(var(--radius) * 2);
+  --radius-3xl: calc(var(--radius) * 3);
+  --radius-4xl: calc(var(--radius) * 4);
+
+  /* Editorial display scale — tight tracking, set big. */
+  --text-display-2xl: 4.5rem;
+  --text-display-2xl--line-height: 0.92;
+  --text-display-2xl--letter-spacing: -0.035em;
+  --text-display-xl: 3.5rem;
+  --text-display-xl--line-height: 0.95;
+  --text-display-xl--letter-spacing: -0.03em;
+  --text-display-lg: 2.5rem;
+  --text-display-lg--line-height: 1;
+  --text-display-lg--letter-spacing: -0.025em;
+  --text-display-md: 1.875rem;
+  --text-display-md--line-height: 1.1;
+  --text-display-md--letter-spacing: -0.02em;
+
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-rise: rise 240ms var(--ease-out-quint) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --radius: 0.25rem;
+
+  /* Warm paper, not sterile white. */
+  --background: oklch(0.985 0.004 95);
+  --foreground: oklch(0.16 0.008 75);
+
+  --card: oklch(1 0.002 95);
+  --card-foreground: var(--foreground);
+  --popover: oklch(1 0.002 95);
+  --popover-foreground: var(--foreground);
+
+  /* Primary is ink. The accent is deliberately not the primary action colour —
+     it would stop being a signal if every button wore it. */
+  --primary: oklch(0.19 0.008 75);
+  --primary-foreground: oklch(0.985 0.004 95);
+
+  --secondary: oklch(0.95 0.006 95);
+  --secondary-foreground: oklch(0.22 0.008 75);
+
+  --muted: oklch(0.955 0.005 95);
+  --muted-foreground: oklch(0.48 0.008 75);
+
+  /* Acid chartreuse. Used as a fill behind ink text, never as text on paper. */
+  --accent: oklch(0.9 0.19 118);
+  --accent-foreground: oklch(0.18 0.02 118);
+
+  --destructive: oklch(0.55 0.21 27);
+  --destructive-foreground: oklch(0.985 0.004 95);
+
+  --border: oklch(0.9 0.006 90);
+  --input: oklch(0.88 0.006 90);
+  --ring: oklch(0.16 0.008 75);
+
+  --correct: oklch(0.52 0.14 150);
+  --correct-foreground: oklch(0.985 0.004 95);
+  --correct-muted: oklch(0.95 0.04 150);
+  --partial: oklch(0.65 0.14 75);
+  --partial-foreground: oklch(0.18 0.02 75);
+  --partial-muted: oklch(0.96 0.05 85);
+  --incorrect: oklch(0.55 0.21 27);
+  --incorrect-foreground: oklch(0.985 0.004 95);
+  --incorrect-muted: oklch(0.96 0.03 27);
+
+  /* dataviz reference palette, light steps. Validated against #fbfaf7:
+     lightness band, chroma floor, CVD separation and normal-vision floor all
+     pass. Slots 3/4/5 fall below 3:1 on paper — any chart using them must ship
+     direct labels or a table view (the relief rule). */
+  --chart-1: #2a78d6;
+  --chart-2: #008300;
+  --chart-3: #e87ba4;
+  --chart-4: #eda100;
+  --chart-5: #1baf7a;
+  --chart-6: #eb6834;
+  --chart-7: #4a3aa7;
+  --chart-8: #e34948;
+
+  --sidebar: oklch(0.97 0.005 95);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: oklch(0.19 0.008 75);
+  --sidebar-primary-foreground: oklch(0.985 0.004 95);
+  --sidebar-accent: oklch(0.94 0.006 95);
+  --sidebar-accent-foreground: oklch(0.22 0.008 75);
+  --sidebar-border: oklch(0.9 0.006 90);
+  --sidebar-ring: oklch(0.16 0.008 75);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: oklch(0.16 0.004 95);
+  --foreground: oklch(0.96 0.004 95);
+
+  --card: oklch(0.2 0.005 95);
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.2 0.005 95);
+  --popover-foreground: var(--foreground);
+
+  --primary: oklch(0.96 0.004 95);
+  --primary-foreground: oklch(0.18 0.006 75);
+
+  --secondary: oklch(0.26 0.005 95);
+  --secondary-foreground: oklch(0.96 0.004 95);
+
+  --muted: oklch(0.24 0.005 95);
+  --muted-foreground: oklch(0.68 0.006 95);
+
+  --accent: oklch(0.88 0.19 118);
+  --accent-foreground: oklch(0.18 0.02 118);
+
+  --destructive: oklch(0.62 0.2 25);
+  --destructive-foreground: oklch(0.16 0.004 95);
+
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.88 0.19 118);
+
+  --correct: oklch(0.7 0.16 150);
+  --correct-foreground: oklch(0.16 0.004 95);
+  --correct-muted: oklch(0.28 0.06 150);
+  --partial: oklch(0.78 0.15 80);
+  --partial-foreground: oklch(0.16 0.004 95);
+  --partial-muted: oklch(0.3 0.06 80);
+  --incorrect: oklch(0.68 0.19 25);
+  --incorrect-foreground: oklch(0.16 0.004 95);
+  --incorrect-muted: oklch(0.3 0.08 25);
+
+  /* dataviz reference palette, dark steps — a selected set for the dark
+     surface, not an automatic flip of the light one. Validated against
+     #131312: all checks pass, including >= 3:1 contrast. */
+  --chart-1: #3987e5;
+  --chart-2: #008300;
+  --chart-3: #d55181;
+  --chart-4: #c98500;
+  --chart-5: #199e70;
+  --chart-6: #d95926;
+  --chart-7: #9085e9;
+  --chart-8: #e66767;
+
+  --sidebar: oklch(0.18 0.004 95);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: oklch(0.96 0.004 95);
+  --sidebar-primary-foreground: oklch(0.18 0.006 75);
+  --sidebar-accent: oklch(0.26 0.005 95);
+  --sidebar-accent-foreground: oklch(0.96 0.004 95);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.88 0.19 118);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "kern", "liga", "calt";
   }
-  html {
-    @apply font-mono;
+
+  /* Data reads as data: mono, uppercase, tracked out. */
+  .font-data {
+    @apply font-mono uppercase tracking-[0.08em];
+  }
+
+  /* Tabular figures so scores don't jitter as they count. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background: var(--accent);
+    color: var(--accent-foreground);
+  }
+}
+
+@media print {
+  @page {
+    margin: 18mm;
+  }
+
+  .no-print {
+    /* Must outrank whatever display utility the element already carries. */
+    /* biome-ignore lint/complexity/noImportantStyles: print override must win */
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
   }
 }
