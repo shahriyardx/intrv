@@ -17,6 +17,7 @@
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset",
+    "db:seed": "bun run prisma/seed.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

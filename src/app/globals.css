@@ -275,4 +275,11 @@
     background: #fff;
     color: #000;
   }
+
+  /* A review card cut in half by a page break strands the answer on one sheet
+     and the question it answers on another. Grading colour is carried by an
+     icon and a label, so losing the tints to a printer costs nothing. */
+  main article {
+    break-inside: avoid;
+  }
 }

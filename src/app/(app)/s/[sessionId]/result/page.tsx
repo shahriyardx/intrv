@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ResultView } from "@/components/session/result-view";
 import { SiteHeader } from "@/components/site-header";
+import { SiteNav } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
 import { DataLabel } from "@/components/ui/prose";
 import { getAccessibleSession } from "@/server/dal/interview";
@@ -28,7 +29,9 @@ export default async function ResultPage(props: {
 
   return (
     <>
-      <SiteHeader />
+      <SiteHeader>
+        <SiteNav />
+      </SiteHeader>
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
         <div className="no-print mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>

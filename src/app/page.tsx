@@ -1,6 +1,7 @@
 import { ArrowRightIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
+import { SiteNav } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
 import { DataLabel, Prose } from "@/components/ui/prose";
 
@@ -25,7 +26,9 @@ const STEPS = [
 export default function Home() {
   return (
     <>
-      <SiteHeader />
+      <SiteHeader>
+        <SiteNav />
+      </SiteHeader>
 
       <main className="flex-1">
         <section className="mx-auto max-w-6xl px-6 pt-20 pb-24 sm:pt-28">
@@ -67,7 +70,10 @@ export default function Home() {
           <div className="mx-auto grid max-w-6xl gap-px bg-border sm:grid-cols-3">
             {STEPS.map((step) => (
               <div key={step.n} className="bg-background p-8">
-                <span className="font-mono text-xs tabular text-accent-foreground/60">
+                {/* --accent-foreground is only validated as ink *on* the accent
+                    fill; as text on the page background it is near-invisible in
+                    dark mode. */}
+                <span className="font-mono text-xs tabular text-muted-foreground">
                   {step.n}
                 </span>
                 <h2 className="mt-3 font-display text-display-md">

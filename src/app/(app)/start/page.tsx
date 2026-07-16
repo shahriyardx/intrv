@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SiteHeader } from "@/components/site-header";
+import { SiteNav } from "@/components/site-nav";
 import { DataLabel } from "@/components/ui/prose";
 import { Configurator } from "./configurator";
 
@@ -12,7 +13,9 @@ export const metadata: Metadata = {
 export default function StartPage() {
   return (
     <>
-      <SiteHeader />
+      <SiteHeader>
+        <SiteNav />
+      </SiteHeader>
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-14">
         <DataLabel>New session</DataLabel>
         <h1 className="mt-3 font-display text-display-lg">

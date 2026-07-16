@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, JetBrains_Mono, Newsreader } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { env } from "@/lib/env";
 import { cn } from "@/lib/utils";
 import { TRPCReactProvider } from "@/trpc/client";
 import "./globals.css";
@@ -27,6 +28,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  // Without this, Next resolves og:image against http://localhost:3000 and every
+  // shared link ships a preview card pointing at the sharer's own machine.
+  metadataBase: new URL(env.BETTER_AUTH_URL),
   title: {
     default: "InterviewAI — Practice interviews that teach you something",
     template: "%s · InterviewAI",

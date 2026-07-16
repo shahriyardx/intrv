@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { Runner } from "@/components/session/runner";
 import { SiteHeader } from "@/components/site-header";
+import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
 import { DataLabel } from "@/components/ui/prose";
 import { QUESTION_TYPES, type QuestionType } from "@/lib/schemas";
@@ -38,7 +39,9 @@ export default async function SessionPage(props: {
   if (session.status === "FAILED") {
     return (
       <>
-        <SiteHeader />
+        <SiteHeader>
+          <SiteNav />
+        </SiteHeader>
         <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-14">
           <h1 className="font-display text-display-md">
             This session didn't generate
@@ -53,7 +56,9 @@ export default async function SessionPage(props: {
 
   return (
     <>
-      <SiteHeader />
+      <SiteHeader>
+        <SiteNav />
+      </SiteHeader>
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
         <div className="mb-8 flex flex-wrap items-center gap-2">
           <DataLabel>{session.topic}</DataLabel>

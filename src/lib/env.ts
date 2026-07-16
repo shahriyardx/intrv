@@ -12,8 +12,8 @@ const serverEnvSchema = z.object({
     .min(32, "BETTER_AUTH_SECRET must be at least 32 chars"),
   BETTER_AUTH_URL: z.url(),
   DEEPSEEK_API_KEY: z.string().default(""),
-  GITHUB_CLIENT_ID: z.string().default(""),
-  GITHUB_CLIENT_SECRET: z.string().default(""),
+  GOOGLE_CLIENT_ID: z.string().default(""),
+  GOOGLE_CLIENT_SECRET: z.string().default(""),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
@@ -34,9 +34,12 @@ function loadEnv() {
 
 export const env = loadEnv();
 
-/** GitHub OAuth is only wired up when both halves of the credential exist. */
-export const isGithubOAuthEnabled = Boolean(
-  env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET,
+/**
+ * Google OAuth is only wired up when both halves of the credential exist —
+ * otherwise the sign-in page would offer a button that dead-ends.
+ */
+export const isGoogleOAuthEnabled = Boolean(
+  env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET,
 );
 
 /** Generation and short-answer grading are disabled without a key. */

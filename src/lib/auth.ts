@@ -3,7 +3,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { admin } from "better-auth/plugins";
 import { prisma } from "@/lib/db";
-import { env, isGithubOAuthEnabled } from "@/lib/env";
+import { env, isGoogleOAuthEnabled } from "@/lib/env";
 
 export const auth = betterAuth({
   appName: "InterviewAI",
@@ -16,11 +16,11 @@ export const auth = betterAuth({
     minPasswordLength: 8,
   },
 
-  socialProviders: isGithubOAuthEnabled
+  socialProviders: isGoogleOAuthEnabled
     ? {
-        github: {
-          clientId: env.GITHUB_CLIENT_ID,
-          clientSecret: env.GITHUB_CLIENT_SECRET,
+        google: {
+          clientId: env.GOOGLE_CLIENT_ID,
+          clientSecret: env.GOOGLE_CLIENT_SECRET,
         },
       }
     : {},
