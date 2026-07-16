@@ -3,11 +3,12 @@ import { z } from "zod";
 import type { AnswerKey, Choice } from "@/lib/schemas";
 
 /**
- * DeepSeek strict mode requires every property to be listed in `required` and
- * `additionalProperties: false`, and it does not support `minItems`. So the
- * wire shape is deliberately flat and permissive — `choices` and `keyPoints`
- * are always present (empty when irrelevant) — and the real invariants are
- * enforced by Zod below plus by the prompt.
+ * DeepSeek strict mode requires every property to appear in `required` and
+ * `additionalProperties: false`, and it does not support `minItems`. Hence the
+ * flat wire shape: one `answerKey` string covering all three question types,
+ * with the real invariants enforced by Zod and the normalizer below.
+ *
+ * Do not trust `required` to mean "present" — see the note on wireQuestionSchema.
  */
 export const emitQuestionsParameters = {
   type: "object",
@@ -73,14 +74,25 @@ export const emitQuestionsParameters = {
   },
 } as const;
 
+/**
+ * Every array here is `.default([])` for a reason found the hard way: DeepSeek's
+ * strict mode does NOT guarantee that `required` properties are present. It
+ * omits ones it judges inapplicable — a TRUE_FALSE question arrives with no
+ * `choices` key at all, and a non-SHORT_ANSWER with no `keyPoints` — despite
+ * both being listed in `required`. Strict mode constrains the *types* of the
+ * fields it emits, not their presence.
+ *
+ * So absent means empty, which is exactly what the normalizer expects. Treating
+ * it as a validation error instead would fail every mixed-type batch.
+ */
 const wireQuestionSchema = z.object({
   type: z.enum(["MCQ", "TRUE_FALSE", "SHORT_ANSWER"]),
   prompt: z.string().min(1).max(2000),
-  choices: z.array(z.object({ key: z.string(), text: z.string() })),
+  choices: z.array(z.object({ key: z.string(), text: z.string() })).default([]),
   answerKey: z.string().min(1),
-  keyPoints: z.array(z.string()),
+  keyPoints: z.array(z.string()).default([]),
   explanation: z.string().default(""),
-  concepts: z.array(z.string()),
+  concepts: z.array(z.string()).default([]),
 });
 
 export const emitQuestionsSchema = z.object({

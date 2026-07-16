@@ -1,0 +1,27 @@
+import type { Metadata } from "next";
+import { SiteHeader } from "@/components/site-header";
+import { DataLabel } from "@/components/ui/prose";
+import { Configurator } from "./configurator";
+
+export const metadata: Metadata = {
+  title: "Start an interview",
+  description:
+    "Pick a topic, a difficulty, and how many questions. We generate the interview and grade it.",
+};
+
+export default function StartPage() {
+  return (
+    <>
+      <SiteHeader />
+      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-14">
+        <DataLabel>New session</DataLabel>
+        <h1 className="mt-3 font-display text-display-lg">
+          What should we test you on?
+        </h1>
+        <div className="mt-10">
+          <Configurator />
+        </div>
+      </main>
+    </>
+  );
+}

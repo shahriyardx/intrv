@@ -2,7 +2,6 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 import { auth } from "@/lib/auth";
-import { getOrCreateGuestId } from "@/lib/guest";
 
 /**
  * Takes `headers` rather than reading `next/headers` itself so the exact same
@@ -15,8 +14,6 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
   return {
     session,
     headers: opts.headers,
-    /** Present for signed-out visitors; lets guests own interview sessions. */
-    guestId: session ? null : await getOrCreateGuestId(),
   };
 };
 

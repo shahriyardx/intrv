@@ -127,13 +127,14 @@ enum SessionStatus {
   ABANDONED
 }
 
-/// An attempt at a quiz/interview. Owned by either a signed-in user (userId) or
-/// an anonymous visitor (guestId, from a signed httpOnly cookie) — exactly one
-/// of the two is set. See ownerWhere() in the DAL.
+/// An attempt at a quiz/interview.
+///
+/// userId is null when it was taken signed-out: such a session is reachable by
+/// anyone holding its id — the random UUID is the capability. Once a session
+/// belongs to a user it is theirs alone. See canAccessSession() in the DAL.
 model InterviewSession {
   id          String        @id @default(uuid())
   userId      String?
-  guestId     String?
   /// Unguessable public id; null until the user opts into sharing.
   shareId     String?       @unique
   topic       String        @db.VarChar(120)
@@ -161,7 +162,6 @@ model InterviewSession {
   aiCalls   AiCall[]
 
   @@index([userId, createdAt(sort: Desc)])
-  @@index([guestId, createdAt(sort: Desc)])
   @@index([status])
   @@map("interview_session")
 }

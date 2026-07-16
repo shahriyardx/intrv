@@ -1,37 +1,44 @@
 /**
- * Pure ownership logic. Deliberately free of imports: this decides who can read
+ * Pure access logic. Deliberately free of imports: this decides who can read
  * what, so it must be unit-testable without a database, a session, or an
  * environment.
  */
 
 export type Viewer =
   | { kind: "user"; userId: string; role: string | null; banned: boolean }
-  | { kind: "guest"; guestId: string }
   | { kind: "anonymous" };
 
 /**
- * The single owner predicate for every interview-session query.
+ * Access model
+ * ------------
+ * A session created while signed out has `userId === null` and is reachable by
+ * anyone holding its id — the random UUID *is* the capability, like an unlisted
+ * link. That is the whole design: no account, no cookie, take the interview,
+ * read the result.
  *
- * A session belongs to exactly one of a user or a guest cookie, so ownership is
- * a two-branch check. Centralising it here keeps that branching from spreading
- * across the codebase, and makes moving to a user-row-per-guest model later a
- * one-file change.
+ * A session created while signed in belongs to that user and nobody else,
+ * including anonymous visitors who somehow learn the id.
  *
- * Returns null for an anonymous viewer: they own nothing. Callers must treat
- * null as "match nothing" — spreading an empty object into a Prisma `where`
- * would match every row in the table.
+ * The asymmetry is deliberate. An anonymous session has nothing to protect
+ * beyond the id itself, whereas a signed-in user's history is theirs.
  */
-export function ownerWhere(
+export function canAccessSession(
+  session: { userId: string | null },
   viewer: Viewer,
-): { userId: string } | { guestId: string } | null {
-  switch (viewer.kind) {
-    case "user":
-      return { userId: viewer.userId };
-    case "guest":
-      return { guestId: viewer.guestId };
-    case "anonymous":
-      return null;
-  }
+): boolean {
+  if (session.userId === null) return true;
+  return viewer.kind === "user" && viewer.userId === session.userId;
+}
+
+/**
+ * Scopes a *listing* query to the viewer.
+ *
+ * Returns null for an anonymous viewer, who has no history to list — callers
+ * must treat null as "match nothing". Never return an empty object here: spread
+ * into a Prisma `where` it would match every row in the table.
+ */
+export function ownerWhere(viewer: Viewer): { userId: string } | null {
+  return viewer.kind === "user" ? { userId: viewer.userId } : null;
 }
 
 export function isAdmin(viewer: Viewer): boolean {

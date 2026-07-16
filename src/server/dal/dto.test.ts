@@ -12,6 +12,7 @@ const mcqRow = {
   ],
   answerKey: { kind: "MCQ", key: "B" },
   explanation: "Because arithmetic.",
+  concepts: ["arithmetic"],
   answer: null,
 };
 
@@ -24,6 +25,11 @@ describe("toClientQuestion", () => {
     // The question itself must still be usable.
     expect(out.prompt).toBe("What is 2 + 2?");
     expect(out.choices).toHaveLength(2);
+  });
+
+  it("withholds concepts before grading — the tags hint at the answer", () => {
+    expect(toClientQuestion(mcqRow, false).concepts).toBeNull();
+    expect(toClientQuestion(mcqRow, true).concepts).toEqual(["arithmetic"]);
   });
 
   it("never leaks the answer through serialization before grading", () => {

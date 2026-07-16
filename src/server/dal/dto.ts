@@ -25,6 +25,11 @@ export type ClientQuestion = {
   explanation: string | null;
   /** Present only once graded. */
   answerKey: AnswerKey | null;
+  /**
+   * Present only once graded. Tags like "hoisting, closures" would hint at the
+   * answer, so they are withheld with everything else.
+   */
+  concepts: string[] | null;
   answer: {
     response: AnswerResponse | null;
     isCorrect: boolean | null;
@@ -41,6 +46,7 @@ type QuestionRow = {
   choices: unknown;
   answerKey: unknown;
   explanation: string | null;
+  concepts?: string[];
   answer?: {
     response: unknown;
     isCorrect: boolean | null;
@@ -70,6 +76,7 @@ export function toClientQuestion(
     choices,
     explanation: revealAnswers ? row.explanation : null,
     answerKey: key?.success ? key.data : null,
+    concepts: revealAnswers ? (row.concepts ?? []) : null,
     answer: row.answer
       ? {
           response: (row.answer.response as AnswerResponse | null) ?? null,
@@ -90,6 +97,7 @@ export const clientQuestionSelect = {
   choices: true,
   answerKey: true,
   explanation: true,
+  concepts: true,
   answer: {
     select: {
       response: true,

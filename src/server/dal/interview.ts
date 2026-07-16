@@ -1,13 +1,11 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import type { CreateSessionInput } from "@/lib/schemas";
-import type { NormalizedQuestion } from "@/server/ai/schemas";
 import {
   type ClientQuestion,
   clientQuestionSelect,
   toClientQuestion,
 } from "@/server/dal/dto";
-import { ownerWhere, type Viewer } from "@/server/dal/owner";
+import { canAccessSession, ownerWhere, type Viewer } from "@/server/dal/owner";
 
 export type SessionSummary = {
   id: string;
@@ -26,70 +24,45 @@ export type SessionSummary = {
   timeLimitMs: number | null;
   createdAt: Date;
   shareId: string | null;
+  /** User-facing note when something degraded: failed generation, partial grading. */
+  error: string | null;
 };
 
 export type SessionDetail = SessionSummary & {
   questions: ClientQuestion[];
 };
 
-export async function createSession(
-  viewer: Viewer,
-  input: CreateSessionInput & { guestId?: string },
-): Promise<string> {
-  const owner =
-    viewer.kind === "user"
-      ? { userId: viewer.userId }
-      : {
-          guestId:
-            input.guestId ?? (viewer.kind === "guest" ? viewer.guestId : null),
-        };
-
-  if (!owner.userId && !owner.guestId) {
-    throw new Error("createSession requires an owner");
-  }
-
-  const session = await prisma.interviewSession.create({
-    data: {
-      ...owner,
-      topic: input.topic,
-      difficulty: input.difficulty,
-      questionCount: input.questionCount,
-      timeLimitMs: input.timeLimitMinutes
-        ? input.timeLimitMinutes * 60_000
-        : null,
-      status: "GENERATING",
-    },
-    select: { id: true },
-  });
-
-  return session.id;
-}
+const sessionSelect = {
+  id: true,
+  userId: true,
+  topic: true,
+  difficulty: true,
+  status: true,
+  questionCount: true,
+  score: true,
+  expiresAt: true,
+  timeLimitMs: true,
+  createdAt: true,
+  shareId: true,
+  error: true,
+} as const;
 
 /**
- * Loads a session the viewer owns, or null. The owner predicate is applied in
- * the query rather than checked afterwards, so a miss is indistinguishable from
- * a non-existent id and we can't leak existence.
+ * Loads a session the viewer may read, or null.
+ *
+ * Unowned sessions are readable by anyone holding the id — that is the
+ * no-account design. Owned sessions are readable only by their owner. Both
+ * "missing" and "forbidden" return null, so this cannot be used to probe which
+ * session ids exist.
  */
-export async function getOwnedSession(
+export async function getAccessibleSession(
   viewer: Viewer,
   sessionId: string,
 ): Promise<SessionDetail | null> {
-  const owner = ownerWhere(viewer);
-  if (!owner) return null;
-
-  const session = await prisma.interviewSession.findFirst({
-    where: { id: sessionId, ...owner },
+  const session = await prisma.interviewSession.findUnique({
+    where: { id: sessionId },
     select: {
-      id: true,
-      topic: true,
-      difficulty: true,
-      status: true,
-      questionCount: true,
-      score: true,
-      expiresAt: true,
-      timeLimitMs: true,
-      createdAt: true,
-      shareId: true,
+      ...sessionSelect,
       questions: {
         orderBy: { index: "asc" },
         select: clientQuestionSelect,
@@ -97,7 +70,7 @@ export async function getOwnedSession(
     },
   });
 
-  if (!session) return null;
+  if (!session || !canAccessSession(session, viewer)) return null;
 
   const revealAnswers = session.status === "GRADED";
 
@@ -112,29 +85,38 @@ export async function getOwnedSession(
     timeLimitMs: session.timeLimitMs,
     createdAt: session.createdAt,
     shareId: session.shareId,
+    error: session.error,
     questions: session.questions.map((q) => toClientQuestion(q, revealAnswers)),
   };
 }
 
-/** Ownership check without loading questions — for actions that only mutate. */
-export async function assertOwnsSession(
+/** Access check without loading questions — for actions that only mutate. */
+export async function assertCanAccessSession(
   viewer: Viewer,
   sessionId: string,
 ): Promise<{
   id: string;
+  userId: string | null;
   status: SessionSummary["status"];
   expiresAt: Date | null;
   topic: string;
 } | null> {
-  const owner = ownerWhere(viewer);
-  if (!owner) return null;
-
-  return prisma.interviewSession.findFirst({
-    where: { id: sessionId, ...owner },
-    select: { id: true, status: true, expiresAt: true, topic: true },
+  const session = await prisma.interviewSession.findUnique({
+    where: { id: sessionId },
+    select: {
+      id: true,
+      userId: true,
+      status: true,
+      expiresAt: true,
+      topic: true,
+    },
   });
+
+  if (!session || !canAccessSession(session, viewer)) return null;
+  return session;
 }
 
+/** A signed-in user's history. Anonymous viewers have none, by design. */
 export async function listSessions(
   viewer: Viewer,
   opts: { limit?: number; cursor?: string } = {},
@@ -149,70 +131,16 @@ export async function listSessions(
     orderBy: { createdAt: "desc" },
     take: limit + 1,
     ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
-    select: {
-      id: true,
-      topic: true,
-      difficulty: true,
-      status: true,
-      questionCount: true,
-      score: true,
-      expiresAt: true,
-      timeLimitMs: true,
-      createdAt: true,
-      shareId: true,
-    },
+    select: sessionSelect,
   });
 
   const hasMore = rows.length > limit;
-  const items = (hasMore ? rows.slice(0, limit) : rows).map((r) => ({
-    ...r,
-    score: r.score === null ? null : Number(r.score),
-  }));
+  const items = (hasMore ? rows.slice(0, limit) : rows).map(
+    ({ userId: _userId, ...row }) => ({
+      ...row,
+      score: row.score === null ? null : Number(row.score),
+    }),
+  );
 
   return { items, nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null };
-}
-
-/** Persists generated questions and flips the session to READY. */
-export async function saveGeneratedQuestions(
-  sessionId: string,
-  questions: NormalizedQuestion[],
-  timeLimitMs: number | null,
-): Promise<void> {
-  await prisma.$transaction(async (tx) => {
-    await tx.question.createMany({
-      data: questions.map((q, index) => ({
-        sessionId,
-        index,
-        type: q.type,
-        prompt: q.prompt,
-        choices: q.choices ?? undefined,
-        answerKey: q.answerKey,
-        explanation: q.explanation || null,
-        concepts: q.concepts,
-      })),
-    });
-
-    // The clock starts when the questions exist, not when the row was created —
-    // generation latency must not eat the student's time.
-    const now = new Date();
-    await tx.interviewSession.update({
-      where: { id: sessionId },
-      data: {
-        status: "READY",
-        questionCount: questions.length,
-        startedAt: now,
-        expiresAt: timeLimitMs ? new Date(now.getTime() + timeLimitMs) : null,
-      },
-    });
-  });
-}
-
-export async function markSessionFailed(
-  sessionId: string,
-  error: string,
-): Promise<void> {
-  await prisma.interviewSession.update({
-    where: { id: sessionId },
-    data: { status: "FAILED", error },
-  });
 }

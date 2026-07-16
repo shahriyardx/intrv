@@ -6,8 +6,24 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # InterviewAI
 
-AI-generated quizzes and interviews (MCQ, true/false, short answer). Guests can
-play without an account; signing up adopts their history. No code execution.
+AI-generated quizzes and interviews (MCQ, true/false, short answer). No code
+execution.
+
+## Access model — read this before touching a query
+
+There is **no guest identity**: no guest cookie, no anonymous user row, nothing
+to migrate at sign-up.
+
+- A session created while signed out has `userId = null` and is readable by
+  **anyone holding its id**. The random UUID in the URL *is* the capability,
+  like an unlisted link. That is the product: no account, take the interview,
+  read the result.
+- A session created while signed in belongs to that user and nobody else — an
+  anonymous visitor who learns the id still gets nothing.
+
+`canAccessSession()` in `src/server/dal/owner.ts` is the one place that decides
+this. `ownerWhere()` is only for *listing* a signed-in user's history and
+returns `null` (never `{}`) for anonymous viewers.
 
 ## Stack
 
@@ -34,10 +50,14 @@ These are all verified against the installed packages — not guesses.
 - **`url` is banned from `schema.prisma`.** It lives in `prisma.config.ts`,
   which needs `import "dotenv/config"` because Prisma 7 no longer auto-loads
   `.env` for the CLI.
-- **A stale generated client fails as `Model X does not exist in the database`**,
-  which sounds like a migration problem and isn't. Run `bun run db:generate`.
-  `postinstall` does it for fresh clones. Restart `next dev` after generating —
-  it caches the client module.
+- **A stale generated Prisma client is the single most misleading failure here,
+  and it has bitten twice.** It surfaces as `Model X does not exist in the
+  database` or `The column X does not exist in the current database` — both of
+  which read like a migration problem and are not. `next dev` caches the
+  generated client module, so **after every `prisma migrate dev` you must
+  restart the dev server**, not just regenerate. `dev` and `postinstall` both
+  run `prisma generate` to cover the cold-start case; nothing can cover the
+  mid-session one but a restart.
 - **`revalidateTag(tag)` needs a second arg** (a cacheLife profile) in Next 16.
   Prefer `updateTag` in Server Actions for read-your-own-writes.
 - **`middleware.ts` is now `proxy.ts`**, Node runtime, not configurable. It is
@@ -79,10 +99,15 @@ non-streaming calls stay on `httpBatchLink`.
 
 ## Conventions
 
-- `src/server/dal/*` and `src/lib/{db,auth,env,guest}.ts` are `server-only`.
+- `src/server/dal/*` and `src/lib/{db,auth,env}.ts` are `server-only`.
+  `src/server/dal/owner.ts` is the exception and stays import-free so the access
+  rules are unit-testable without a database.
 - **DAL for RSC reads, tRPC for the client-facing API, Server Actions for
   mutations/forms.** Don't route RSC data through tRPC — `createCaller` re-runs
   context, middleware, and validation for code the DAL already exposes.
+- Server Functions are POST endpoints reachable directly, so **every action
+  re-establishes its viewer and re-checks access** rather than trusting the UI
+  that called it.
 - `Question.answerKey` and `explanation` must never reach the client before
   grading. Go through the DAL's `toClientQuestion()` DTO.
 - Money and scores are `Decimal`, never `Float`. JSON columns are `JsonB`.
