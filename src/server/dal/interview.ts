@@ -101,6 +101,14 @@ export async function assertCanAccessSession(
   status: SessionSummary["status"];
   expiresAt: Date | null;
   topic: string;
+  mode:
+    | "CUSTOM"
+    | "JOB_DESCRIPTION"
+    | "DAILY"
+    | "REVIEW"
+    | "REMATCH"
+    | "SCREEN";
+  screenId: string | null;
 } | null> {
   const session = await prisma.interviewSession.findUnique({
     where: { id: sessionId },
@@ -110,6 +118,8 @@ export async function assertCanAccessSession(
       status: true,
       expiresAt: true,
       topic: true,
+      mode: true,
+      screenId: true,
     },
   });
 

@@ -42,6 +42,9 @@ model User {
   accounts           Account[]
   interviewSessions  InterviewSession[]
   posts              Post[]
+  reviewItems        ReviewItem[]
+  orgMemberships     OrgMember[]
+  ownedOrganizations Organization[]
 
   @@unique([email])
   @@map("user")
@@ -136,6 +139,22 @@ enum SessionStatus {
   ABANDONED
 }
 
+/// Why a session exists. CUSTOM is the classic configurator flow; the others
+/// change where its questions come from and which surfaces show it.
+enum SessionMode {
+  CUSTOM
+  /// Generated from an extracted job-description brief.
+  JOB_DESCRIPTION
+  /// An attempt at today's shared DailyChallenge question set.
+  DAILY
+  /// Regenerated questions targeting the user's due ReviewItems.
+  REVIEW
+  /// A clone of another session's questions, taken via its share link.
+  REMATCH
+  /// A candidate attempt at an organization's Screen.
+  SCREEN
+}
+
 /// An attempt at a quiz/interview.
 ///
 /// userId is null when it was taken signed-out: such a session is reachable by
@@ -163,6 +182,27 @@ model InterviewSession {
   score       Decimal?      @db.Decimal(5, 2)
   /// Populated when status = FAILED so the UI can explain itself.
   error       String?
+
+  mode        SessionMode   @default(CUSTOM)
+  /// Adaptive sessions step per-batch difficulty from answer signal; the
+  /// session-level `difficulty` is then just the starting rung.
+  adaptive    Boolean       @default(false)
+  /// Extra focus text fed to the generator: the extracted JD profile
+  /// (JOB_DESCRIPTION) or the due-concept list (REVIEW). Always our own
+  /// extraction output, never a raw user paste.
+  brief       String?       @db.VarChar(2000)
+
+  dailyChallengeId String?
+  /// REMATCH: the session whose question set this one cloned.
+  rematchOfId      String?
+  /// SCREEN: the org screen this candidate attempt belongs to.
+  screenId         String?
+  candidateName    String?  @db.VarChar(80)
+  candidateEmail   String?  @db.VarChar(160)
+  /// Focus-loss/paste counters, captured for SCREEN sessions only and shown
+  /// only to the screen's organization.
+  integrity        Json?    @db.JsonB
+
   createdAt   DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime      @updatedAt @db.Timestamptz(3)
 
@@ -170,8 +210,15 @@ model InterviewSession {
   questions Question[]
   aiCalls   AiCall[]
 
+  dailyChallenge DailyChallenge?    @relation(fields: [dailyChallengeId], references: [id], onDelete: SetNull)
+  rematchOf      InterviewSession?  @relation("Rematch", fields: [rematchOfId], references: [id], onDelete: SetNull)
+  rematches      InterviewSession[] @relation("Rematch")
+  screen         Screen?            @relation(fields: [screenId], references: [id], onDelete: Cascade)
+
   @@index([userId, createdAt(sort: Desc)])
   @@index([status])
+  @@index([dailyChallengeId, score(sort: Desc)])
+  @@index([screenId, createdAt(sort: Desc)])
   @@map("interview_session")
 }
 
@@ -191,6 +238,9 @@ model Question {
   explanation String?
   /// Concept tags driving the weakness rollup in analytics.
   concepts    String[]
+  /// Set on adaptive sessions, where each batch can sit on a different rung.
+  /// Null means "the session's difficulty".
+  difficulty  Difficulty?
 
   session InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   answer  Answer?
@@ -208,6 +258,9 @@ model Answer {
   /// 0-100. Supports partial credit on short answers.
   score      Decimal? @db.Decimal(5, 2)
   feedback   String?
+  /// Active time the user spent on this question, summed across visits.
+  /// Client-reported, so it is analytics-grade data, never an enforcement input.
+  timeMs     Int?
   createdAt  DateTime @default(now()) @db.Timestamptz(3)
   updatedAt  DateTime @updatedAt @db.Timestamptz(3)
 
@@ -239,6 +292,125 @@ model AiCall {
   @@index([createdAt(sort: Desc)])
   @@index([ok])
   @@map("ai_call")
+}
+
+// ---------------------------------------------------------------------------
+// Learning loop
+// ---------------------------------------------------------------------------
+
+/// One concept a signed-in user got wrong, scheduled for re-testing at
+/// expanding intervals (1d → 3d → 7d, then retired). Review sessions generate
+/// *fresh* questions targeting due concepts — the original question is never
+/// repeated verbatim.
+model ReviewItem {
+  id         String     @id @default(uuid())
+  userId     String
+  concept    String     @db.VarChar(120)
+  /// The topic the concept was missed under; review generation groups by it.
+  topic      String     @db.VarChar(120)
+  difficulty Difficulty
+  /// 0, 1, 2 index into the interval ladder. Advances on a correct review
+  /// answer, resets (and counts a lapse) on another miss.
+  stage      Int        @default(0)
+  lapses     Int        @default(0)
+  dueAt      DateTime   @db.Timestamptz(3)
+  /// Set once the ladder is climbed; retired items stop appearing in the queue
+  /// but keep their history for the mastery view.
+  retired    Boolean    @default(false)
+  createdAt  DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime   @updatedAt @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topic, concept])
+  @@index([userId, retired, dueAt])
+  @@map("review_item")
+}
+
+/// One shared question set per UTC day. Generated by the first visitor (under
+/// an advisory lock, same pattern as the admin claim); every attempt copies
+/// these frozen payloads into its own Question rows so grading is unchanged.
+model DailyChallenge {
+  id         String     @id @default(uuid())
+  /// UTC YYYY-MM-DD.
+  dateKey    String     @unique @db.VarChar(10)
+  topic      String     @db.VarChar(120)
+  difficulty Difficulty
+  /// Frozen [{type, prompt, choices, answerKey, explanation, concepts}].
+  /// Contains answer keys — server-only, never serialized to a client.
+  questions  Json       @db.JsonB
+  createdAt  DateTime   @default(now()) @db.Timestamptz(3)
+
+  sessions InterviewSession[]
+
+  @@map("daily_challenge")
+}
+
+// ---------------------------------------------------------------------------
+// Organizations & screening
+// ---------------------------------------------------------------------------
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(80)
+  /// URL segment, unique — the org's public identity in /org/[slug].
+  slug      String   @unique @db.VarChar(80)
+  ownerId   String
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  /// Cascade: deleting the owner account deletes their org and its screens.
+  /// Acceptable v1 trade-off; revisit if orgs grow multiple admins.
+  owner   User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members OrgMember[]
+  screens Screen[]
+
+  @@map("organization")
+}
+
+model OrgMember {
+  id        String   @id @default(uuid())
+  orgId     String
+  userId    String
+  /// "owner" | "admin" | "member". Checked in the org DAL, not here.
+  role      String   @db.VarChar(20)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, userId])
+  @@index([userId])
+  @@map("org_member")
+}
+
+/// A screening interview an organization sends to candidates. The question set
+/// is generated once and frozen so every candidate answers the identical set.
+model Screen {
+  id            String     @id @default(uuid())
+  orgId         String
+  title         String     @db.VarChar(120)
+  topic         String     @db.VarChar(120)
+  difficulty    Difficulty
+  questionCount Int
+  timeLimitMs   Int?
+  /// Frozen [{type, prompt, choices, answerKey, explanation, concepts}].
+  /// Contains answer keys — server-only, never serialized to a client.
+  questions     Json       @db.JsonB
+  /// Capability token for the public invite link. Unguessable; rotating it
+  /// revokes every outstanding invite at once.
+  inviteToken   String     @unique
+  /// Inactive screens refuse new candidates but keep their reports.
+  active        Boolean    @default(true)
+  createdById   String?
+  createdAt     DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime   @updatedAt @db.Timestamptz(3)
+
+  organization Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  sessions     InterviewSession[]
+
+  @@index([orgId, createdAt(sort: Desc)])
+  @@map("screen")
 }
 
 // ---------------------------------------------------------------------------

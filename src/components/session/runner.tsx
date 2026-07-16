@@ -24,9 +24,20 @@ type Props = {
   types: QuestionType[];
   expectedCount: number;
   expiresAt: string | null;
+  /**
+   * SCREEN sessions only: count focus-loss and paste events and report them at
+   * submit. Regular practice never records this — there is no reader for it.
+   */
+  trackIntegrity?: boolean;
 };
 
-export function Runner({ sessionId, types, expectedCount, expiresAt }: Props) {
+export function Runner({
+  sessionId,
+  types,
+  expectedCount,
+  expiresAt,
+  trackIntegrity = false,
+}: Props) {
   const trpc = useTRPC();
 
   // Generator query: `data` grows as DeepSeek produces questions, so the first
@@ -52,34 +63,97 @@ export function Runner({ sessionId, types, expectedCount, expiresAt }: Props) {
   const answeredCount = Object.keys(answers).length;
   const allArrived = questions.length >= expectedCount;
 
+  // Active time per question, summed across visits. The clock pauses while the
+  // tab is hidden, so it approximates thinking time, not wall time. Client
+  // numbers — analytics-grade only, the server clamps them.
+  const timesRef = useRef<Record<string, number>>({});
+  const enteredAtRef = useRef<number | null>(null);
+  const currentIdRef = useRef<string | null>(null);
+  const integrityRef = useRef({ blurs: 0, pastes: 0 });
+
+  const flushTime = useCallback(() => {
+    const id = currentIdRef.current;
+    if (id && enteredAtRef.current !== null) {
+      timesRef.current[id] =
+        (timesRef.current[id] ?? 0) + (Date.now() - enteredAtRef.current);
+      enteredAtRef.current = Date.now();
+    }
+  }, []);
+
+  const questionId = question?.id ?? null;
+  useEffect(() => {
+    flushTime();
+    currentIdRef.current = questionId;
+    enteredAtRef.current = questionId ? Date.now() : null;
+  }, [questionId, flushTime]);
+
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.hidden) {
+        flushTime();
+        enteredAtRef.current = null;
+      } else if (currentIdRef.current) {
+        enteredAtRef.current = Date.now();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    if (!trackIntegrity) {
+      return () =>
+        document.removeEventListener("visibilitychange", onVisibility);
+    }
+
+    const onBlur = () => {
+      integrityRef.current.blurs++;
+    };
+    const onPaste = () => {
+      integrityRef.current.pastes++;
+    };
+    window.addEventListener("blur", onBlur);
+    document.addEventListener("paste", onPaste);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", onBlur);
+      document.removeEventListener("paste", onPaste);
+    };
+  }, [flushTime, trackIntegrity]);
+
   const onAnswer = useCallback(
     (response: AnswerResponse) => {
       if (!question) return;
       setAnswers((prev) => ({ ...prev, [question.id]: response }));
+      flushTime();
 
       // Fire-and-forget autosave: the user should never wait on it, but a
       // failure must not be silent or they lose work without knowing.
-      void saveAnswer({ sessionId, questionId: question.id, response }).then(
-        (r) => {
-          if (!r.ok) toast.error(r.error);
-        },
-      );
+      void saveAnswer({
+        sessionId,
+        questionId: question.id,
+        response,
+        timeMs: timesRef.current[question.id],
+      }).then((r) => {
+        if (!r.ok) toast.error(r.error);
+      });
     },
-    [question, sessionId],
+    [question, sessionId, flushTime],
   );
 
   const doSubmit = useCallback(() => {
     if (submittedRef.current) return;
     submittedRef.current = true;
+    flushTime();
     startSubmit(async () => {
-      const result = await submitSession(sessionId);
+      const result = await submitSession(
+        sessionId,
+        trackIntegrity ? { ...integrityRef.current } : undefined,
+      );
       // submitSession redirects on success, so anything returned is a failure.
       if (result && !result.ok) {
         submittedRef.current = false;
         toast.error(result.error);
       }
     });
-  }, [sessionId]);
+  }, [sessionId, flushTime, trackIntegrity]);
 
   const onExpire = useCallback(() => {
     if (submittedRef.current) return;

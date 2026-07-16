@@ -69,6 +69,9 @@ export const interviewRouter = createTRPCRouter({
           questionCount: true,
           timeLimitMs: true,
           status: true,
+          mode: true,
+          adaptive: true,
+          brief: true,
         },
       });
 
@@ -118,6 +121,7 @@ export const interviewRouter = createTRPCRouter({
           difficulty: session.difficulty,
           types: input.types,
           count: session.questionCount,
+          brief: session.brief ?? undefined,
           sessionId: session.id,
           signal,
         })) {

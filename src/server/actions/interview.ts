@@ -9,12 +9,15 @@ import {
   type AnswerResponse,
   answerResponseSchema,
   createSessionSchema,
+  type Integrity,
+  integritySchema,
 } from "@/lib/schemas";
 import { AiError } from "@/server/ai/client";
 import { type GradeItem, gradeShortAnswers } from "@/server/ai/grade";
 import { assertCanAccessSession } from "@/server/dal/interview";
 import { getViewer } from "@/server/dal/session";
 import { computeSessionScore, gradeLocally } from "@/server/grading/local";
+import { afterSessionGraded } from "@/server/learning/hooks";
 
 export type ActionError = { ok: false; error: string };
 
@@ -36,6 +39,7 @@ export async function createInterviewSession(
     timeLimitMinutes: formData.get("timeLimitMinutes")
       ? Number(formData.get("timeLimitMinutes"))
       : null,
+    adaptive: formData.get("adaptive") === "on",
   };
 
   const parsed = createSessionSchema.safeParse(raw);
@@ -59,6 +63,7 @@ export async function createInterviewSession(
       timeLimitMs: parsed.data.timeLimitMinutes
         ? parsed.data.timeLimitMinutes * 60_000
         : null,
+      adaptive: parsed.data.adaptive,
       status: "GENERATING",
     },
     select: { id: true },
@@ -74,6 +79,8 @@ export async function saveAnswer(input: {
   sessionId: string;
   questionId: string;
   response: AnswerResponse;
+  /** Accumulated active time on this question. Analytics only — see Answer.timeMs. */
+  timeMs?: number;
 }): Promise<{ ok: true } | ActionError> {
   const viewer = await getViewer();
   const session = await assertCanAccessSession(viewer, input.sessionId);
@@ -97,10 +104,23 @@ export async function saveAnswer(input: {
   });
   if (!question) return { ok: false, error: "Question not found." };
 
+  // Clamp rather than reject: a wild client clock must not lose the answer.
+  const timeMs =
+    typeof input.timeMs === "number" && Number.isFinite(input.timeMs)
+      ? Math.min(Math.max(Math.round(input.timeMs), 0), 6 * 60 * 60_000)
+      : null;
+
   await prisma.answer.upsert({
     where: { questionId: input.questionId },
-    create: { questionId: input.questionId, response: parsed.data },
-    update: { response: parsed.data },
+    create: {
+      questionId: input.questionId,
+      response: parsed.data,
+      ...(timeMs !== null ? { timeMs } : {}),
+    },
+    update: {
+      response: parsed.data,
+      ...(timeMs !== null ? { timeMs } : {}),
+    },
   });
 
   return { ok: true };
@@ -113,6 +133,7 @@ function isExpired(expiresAt: Date | null): boolean {
 
 export async function submitSession(
   sessionId: string,
+  integrity?: Integrity,
 ): Promise<ActionError | never> {
   const viewer = await getViewer();
   const session = await assertCanAccessSession(viewer, sessionId);
@@ -123,9 +144,18 @@ export async function submitSession(
     return { ok: false, error: "This session can't be submitted yet." };
   }
 
+  // Integrity counters are only meaningful (and only stored) for org screens —
+  // recording them for regular practice would be surveillance for no reader.
+  const parsedIntegrity =
+    session.screenId && integrity ? integritySchema.safeParse(integrity) : null;
+
   await prisma.interviewSession.update({
     where: { id: sessionId },
-    data: { status: "SUBMITTED", submittedAt: new Date() },
+    data: {
+      status: "SUBMITTED",
+      submittedAt: new Date(),
+      ...(parsedIntegrity?.success ? { integrity: parsedIntegrity.data } : {}),
+    },
   });
 
   const questions = await prisma.question.findMany({
@@ -240,6 +270,7 @@ export async function submitSession(
         },
       });
 
+      await runAfterGraded(sessionId);
       updateTag(`session:${sessionId}`);
       redirect(`/s/${sessionId}/result`);
     }
@@ -254,12 +285,23 @@ export async function submitSession(
     },
   });
 
+  await runAfterGraded(sessionId);
+
   // updateTag, not revalidateTag: the student must see their own result
   // immediately, not stale-while-revalidate.
   updateTag(`session:${sessionId}`);
   if (viewer.kind === "user") updateTag(`user:${viewer.userId}`);
 
   redirect(`/s/${sessionId}/result`);
+}
+
+/** The learning loop must never cost the student their result. */
+async function runAfterGraded(sessionId: string): Promise<void> {
+  try {
+    await afterSessionGraded(sessionId);
+  } catch (error) {
+    console.error("afterSessionGraded failed:", error);
+  }
 }
 
 export async function createShareLink(

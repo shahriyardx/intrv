@@ -15,6 +15,12 @@ export type GenerateInput = {
   difficulty: Difficulty;
   types: QuestionType[];
   count: number;
+  /**
+   * Extra focus text: the extracted JD profile (JOB_DESCRIPTION mode) or the
+   * due-concept list (REVIEW mode). Rides in the user message — never the
+   * system prompt — so the cacheable prefix stays byte-identical.
+   */
+  brief?: string;
   sessionId?: string;
   signal?: AbortSignal;
 };
@@ -82,6 +88,7 @@ export async function* generateQuestionsStream(
         difficulty: input.difficulty,
         types: input.types,
         count: want,
+        brief: input.brief,
         avoid: asked.length ? asked.slice(-AVOID_WINDOW) : undefined,
       }),
       toolName: "emit_questions",

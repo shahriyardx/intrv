@@ -183,6 +183,18 @@ export function Configurator() {
               </label>
             ))}
           </div>
+          {/* Not another rung on the ladder — a different contract, so it reads
+              as a switch under the ladder rather than a sixth option. */}
+          <label className="mt-3 block cursor-pointer">
+            <input type="checkbox" name="adaptive" className="peer sr-only" />
+            <div className="rounded-md border border-dashed px-3 py-2 transition-colors peer-checked:border-solid peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
+              <span className="text-sm">Adaptive</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                Starts at the difficulty you picked, then steps up or down as
+                you answer. Ends with a calibrated level, not just a score.
+              </span>
+            </div>
+          </label>
         </Field>
 
         <div className="space-y-10">

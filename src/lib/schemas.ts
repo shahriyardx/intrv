@@ -24,6 +24,18 @@ export const questionTypeSchema = z.enum(QUESTION_TYPES);
 export type Difficulty = z.infer<typeof difficultySchema>;
 export type QuestionType = z.infer<typeof questionTypeSchema>;
 
+/** Mirrors the Prisma SessionMode enum for client-side code. */
+export const SESSION_MODES = [
+  "CUSTOM",
+  "JOB_DESCRIPTION",
+  "DAILY",
+  "REVIEW",
+  "REMATCH",
+  "SCREEN",
+] as const;
+export const sessionModeSchema = z.enum(SESSION_MODES);
+export type SessionMode = z.infer<typeof sessionModeSchema>;
+
 /**
  * Generation batches three questions per model call, so a 50-question set is
  * ~17 calls. They stream in and you answer from the first one, but the tail
@@ -64,9 +76,23 @@ export const createSessionSchema = z.object({
     .max(3),
   /** Null means untimed. */
   timeLimitMinutes: z.number().int().min(1).max(180).nullable(),
+  /** Adaptive sessions treat `difficulty` as the starting rung and step it
+   *  per batch from answer signal. */
+  adaptive: z.boolean().default(false),
 });
 
 export type CreateSessionInput = z.infer<typeof createSessionSchema>;
+
+/**
+ * Focus-loss/paste counters a SCREEN session reports at submit. Client-supplied
+ * and therefore only a signal for the recruiter, never an enforcement input.
+ */
+export const integritySchema = z.object({
+  blurs: z.number().int().min(0).max(100_000),
+  pastes: z.number().int().min(0).max(100_000),
+});
+
+export type Integrity = z.infer<typeof integritySchema>;
 
 /** What the user submits per question. Discriminated on the question's type. */
 export const answerResponseSchema = z.union([
