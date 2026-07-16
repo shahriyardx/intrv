@@ -2,8 +2,10 @@
 
 import { randomBytes } from "node:crypto";
 import type { Route } from "next";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import {
   answerKeySchema,
@@ -50,8 +52,10 @@ export async function createOrganization(
   }
   const name = parsed.data;
 
-  const owned = await prisma.organization.count({
-    where: { ownerId: viewer.userId },
+  // "Owned" is now an owner-role membership — the plugin has no ownerId column.
+  // This preserves the prior cap exactly.
+  const owned = await prisma.member.count({
+    where: { userId: viewer.userId, role: "owner" },
   });
   if (owned >= MAX_OWNED_ORGS) {
     return {
@@ -60,18 +64,22 @@ export async function createOrganization(
     };
   }
 
+  // Pre-dedupe the slug so we keep the -2/-3 suffixing behaviour; the plugin
+  // would otherwise just reject a taken slug. better-auth then creates the org
+  // and the creator's owner member atomically.
   const slug = await uniqueSlug(name);
 
-  await prisma.organization.create({
-    data: {
-      name,
-      slug,
-      ownerId: viewer.userId,
-      // The creator is the owner member from the start, so membership checks
-      // and the ownerId agree from row one.
-      members: { create: { userId: viewer.userId, role: "owner" } },
-    },
-  });
+  try {
+    await auth.api.createOrganization({
+      body: { name, slug },
+      headers: await headers(),
+    });
+  } catch {
+    return {
+      ok: false,
+      error: "We couldn't create that organization. Please try again.",
+    };
+  }
 
   // Interpolated route: typedRoutes can't verify the slug segment, so assert
   // it, the same way the admin pages do for their dynamic links.
@@ -134,8 +142,10 @@ export async function createScreen(
 
   // Re-check role in the DB: owner/admin may author screens, a plain member
   // may not.
-  const membership = await prisma.orgMember.findUnique({
-    where: { orgId_userId: { orgId, userId: viewer.userId } },
+  const membership = await prisma.member.findUnique({
+    where: {
+      organizationId_userId: { organizationId: orgId, userId: viewer.userId },
+    },
     select: { role: true, organization: { select: { slug: true } } },
   });
   if (
@@ -280,8 +290,13 @@ async function manageableScreen(
   });
   if (!screen) return null;
 
-  const membership = await prisma.orgMember.findUnique({
-    where: { orgId_userId: { orgId: screen.orgId, userId: viewer.userId } },
+  const membership = await prisma.member.findUnique({
+    where: {
+      organizationId_userId: {
+        organizationId: screen.orgId,
+        userId: viewer.userId,
+      },
+    },
     select: { role: true },
   });
   if (

@@ -61,7 +61,7 @@ describe("jdTextSchema", () => {
   it("counts length on the cleaned text, so control-byte padding cannot fake the minimum", () => {
     const nul = String.fromCharCode(0);
     // 40 real chars + 60 NUL bytes: cleaned length is 40, under JD_MIN.
-    const padded = "real content here that is forty chars ok" + nul.repeat(60);
+    const padded = `real content here that is forty chars ok${nul.repeat(60)}`;
     expect(padded.length).toBeGreaterThanOrEqual(JD_MIN);
     expect(jdTextSchema.safeParse(padded).success).toBe(false);
   });

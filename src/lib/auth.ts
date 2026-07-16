@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
-import { admin } from "better-auth/plugins";
+import { admin, organization } from "better-auth/plugins";
 import { prisma } from "@/lib/db";
 import { env, isGoogleOAuthEnabled } from "@/lib/env";
 
@@ -51,6 +51,11 @@ export const auth = betterAuth({
 
   plugins: [
     admin({ defaultRole: "user", adminRoles: ["admin"] }),
+    // First-party organizations: owns the organization/member/invitation tables
+    // and adds session.activeOrganizationId. Default roles owner/admin/member
+    // match what the org DAL checks. The "3 owned orgs" cap and slug suffixing
+    // are enforced in src/server/actions/org.ts, on top of this.
+    organization(),
     // nextCookies() MUST stay last: it wraps the other plugins' hooks so cookies
     // set during a server action actually get written to the response.
     nextCookies(),

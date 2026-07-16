@@ -38,13 +38,14 @@ model User {
   /// field — it is ours, and better-auth never writes it.
   leaderboardOptOut Boolean @default(false)
 
-  sessions           Session[]
-  accounts           Account[]
-  interviewSessions  InterviewSession[]
-  posts              Post[]
-  reviewItems        ReviewItem[]
-  orgMemberships     OrgMember[]
-  ownedOrganizations Organization[]
+  sessions          Session[]
+  accounts          Account[]
+  interviewSessions InterviewSession[]
+  posts             Post[]
+  reviewItems       ReviewItem[]
+  // better-auth organization plugin: membership and invitations sent.
+  orgMemberships  Member[]
+  sentInvitations Invitation[]
 
   @@unique([email])
   @@map("user")
@@ -63,6 +64,9 @@ model Session {
 
   // admin plugin
   impersonatedBy String?
+
+  // organization plugin: the org the session is currently acting in.
+  activeOrganizationId String?
 
   @@unique([token])
   @@index([userId])
@@ -350,38 +354,63 @@ model DailyChallenge {
 // Organizations & screening
 // ---------------------------------------------------------------------------
 
+/// Owned by the better-auth `organization` plugin. Its columns (name, slug,
+/// logo, metadata, createdAt) are written by better-auth; `screens` is ours.
+/// There is no `ownerId` — ownership is the Member with role "owner" that the
+/// plugin creates for the creator. The "3 owned orgs" cap is enforced in the
+/// action by counting owner-role memberships.
 model Organization {
-  id        String   @id @default(uuid())
-  name      String   @db.VarChar(80)
+  id       String  @id
+  name     String  @db.VarChar(80)
   /// URL segment, unique — the org's public identity in /org/[slug].
-  slug      String   @unique @db.VarChar(80)
-  ownerId   String
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  slug     String  @unique @db.VarChar(80)
+  logo     String?
+  metadata String?
+  createdAt DateTime @default(now())
 
-  /// Cascade: deleting the owner account deletes their org and its screens.
-  /// Acceptable v1 trade-off; revisit if orgs grow multiple admins.
-  owner   User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  members OrgMember[]
-  screens Screen[]
+  members     Member[]
+  invitations Invitation[]
+  screens     Screen[]
 
   @@map("organization")
 }
 
-model OrgMember {
-  id        String   @id @default(uuid())
-  orgId     String
-  userId    String
-  /// "owner" | "admin" | "member". Checked in the org DAL, not here.
-  role      String   @db.VarChar(20)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
+/// better-auth `organization` plugin member. Role is "owner" | "admin" |
+/// "member", checked in the org DAL, not here.
+model Member {
+  id             String   @id
+  organizationId String
+  userId         String
+  role           String   @default("member") @db.VarChar(20)
+  createdAt      DateTime @default(now())
 
-  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([orgId, userId])
+  @@unique([organizationId, userId])
   @@index([userId])
-  @@map("org_member")
+  @@index([organizationId])
+  @@map("member")
+}
+
+/// better-auth `organization` plugin invitation. Pending invites to join an org
+/// by email; status is "pending" | "accepted" | "rejected" | "canceled".
+model Invitation {
+  id             String   @id
+  organizationId String
+  email          String
+  role           String?
+  status         String   @default("pending")
+  expiresAt      DateTime
+  inviterId      String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inviter      User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("invitation")
 }
 
 /// A screening interview an organization sends to candidates. The question set

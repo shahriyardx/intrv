@@ -199,7 +199,16 @@ These are all verified against the installed packages — not guesses.
   set during Server Actions are silently dropped.
 - **The better-auth CLI can't parse a config that imports `server-only`.** Our
   `auth.ts` imports `db.ts` which does. Maintain plugin fields in
-  `prisma/schema.prisma` by hand and verify with a real signup.
+  `prisma/schema.prisma` by hand and verify with a real signup. This includes
+  the `organization` plugin's tables: `Organization`/`Member`/`Invitation` (each
+  `@@map`ped to its better-auth model name — `member`, `invitation`) and
+  `Session.activeOrganizationId`. The model/field names are load-bearing — the
+  Prisma adapter resolves better-auth's `organization`/`member`/`invitation`
+  models to `prisma.organization`/`prisma.member`/`prisma.invitation`, so
+  don't rename them. Orgs have no `ownerId` column; ownership is the `Member`
+  with role `owner` that the plugin creates for the creator. The "3 owned orgs"
+  cap and slug `-2`/`-3` suffixing live in `src/server/actions/org.ts` on top of
+  `auth.api.createOrganization`, which otherwise just rejects a taken slug.
 
 ### tRPC + cacheComponents (verified by spike, 2026-07-16)
 

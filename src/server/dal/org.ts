@@ -26,8 +26,10 @@ export type OrgRole = "owner" | "admin" | "member";
 async function orgRole(viewer: Viewer, orgId: string): Promise<OrgRole | null> {
   if (viewer.kind !== "user") return null;
 
-  const membership = await prisma.orgMember.findUnique({
-    where: { orgId_userId: { orgId, userId: viewer.userId } },
+  const membership = await prisma.member.findUnique({
+    where: {
+      organizationId_userId: { organizationId: orgId, userId: viewer.userId },
+    },
     select: { role: true },
   });
 
@@ -46,7 +48,7 @@ export type OrgSummary = {
 export async function getViewerOrgs(viewer: Viewer): Promise<OrgSummary[]> {
   if (viewer.kind !== "user") return [];
 
-  const memberships = await prisma.orgMember.findMany({
+  const memberships = await prisma.member.findMany({
     where: { userId: viewer.userId },
     orderBy: { createdAt: "asc" },
     select: {
