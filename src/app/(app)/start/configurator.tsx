@@ -1,20 +1,31 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { SpinnerGapIcon } from "@phosphor-icons/react";
-import { useActionState, useState } from "react";
+import { useState, useTransition } from "react";
+import {
+  FormProvider,
+  useForm,
+  useFormContext,
+  useWatch,
+} from "react-hook-form";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { FieldError, Field as UiField } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DataLabel } from "@/components/ui/prose";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { JD_MAX, JD_MIN } from "@/lib/jd";
+import { JD_MAX, jdTextSchema } from "@/lib/jd";
 import {
   DIFFICULTIES,
   type Difficulty,
   QUESTION_COUNTS,
   QUESTION_TYPES,
   type QuestionType,
+  questionTypeSchema,
+  topicSchema,
 } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 import { createInterviewSession } from "@/server/actions/interview";
@@ -89,6 +100,36 @@ const PRESETS: { group: string; topics: string[] }[] = [
   },
 ];
 
+// The controls shared by both tabs. Radios/checkboxes carry strings; the server
+// actions do the Number()/=== "on" conversions and re-validate everything —
+// these client schemas are UX only.
+const sharedShape = {
+  types: z
+    .array(questionTypeSchema)
+    .min(1, "Choose at least one question type."),
+  questionCount: z.string(),
+  timeLimitMinutes: z.string(),
+  adaptive: z.boolean(),
+};
+
+const topicFormSchema = z.object({
+  topic: topicSchema,
+  difficulty: z.enum(DIFFICULTIES),
+  ...sharedShape,
+});
+
+const jdFormSchema = z.object({
+  jd: jdTextSchema,
+  ...sharedShape,
+});
+
+const SHARED_DEFAULTS = {
+  types: [...QUESTION_TYPES],
+  questionCount: "10",
+  timeLimitMinutes: "",
+  adaptive: false,
+};
+
 /**
  * Two ways in: pick a topic, or paste a job description and let us read the role
  * out of it. The forms share every control except how they name the subject —
@@ -117,166 +158,197 @@ export function Configurator() {
 }
 
 function TopicForm() {
-  const [state, formAction, pending] = useActionState(
-    createInterviewSession,
-    null,
-  );
-  // Controlled so a preset can fill the field and light up as chosen. The field
-  // stays free text: the presets are a shortcut, not the menu.
-  const [topic, setTopic] = useState("");
-  const [count, setCount] = useState<number>(10);
+  const form = useForm<z.input<typeof topicFormSchema>>({
+    resolver: zodResolver(topicFormSchema),
+    defaultValues: { topic: "", difficulty: "MEDIUM", ...SHARED_DEFAULTS },
+  });
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const topic = form.watch("topic");
+
+  const onSubmit = form.handleSubmit((_values, event) => {
+    const data = new FormData(event?.currentTarget as HTMLFormElement);
+    setServerError(null);
+    startTransition(async () => {
+      const result = await createInterviewSession(null, data);
+      if (result && !result.ok) setServerError(result.error);
+    });
+  });
 
   return (
-    <form action={formAction} className="space-y-10">
-      <Field label="Topic" hint="Anything you want to be tested on.">
-        <Input
-          name="topic"
-          required
-          maxLength={120}
-          autoFocus
-          value={topic}
-          onChange={(e) => setTopic(e.target.value)}
-          placeholder="e.g. React hooks, photosynthesis, system design"
-          className="h-12 text-base"
-        />
-        {/* Groups are labelled on their own line: inline labels collided with
-            the first chip, and the pill shape fought every other control on
-            this form. Same sharp rectangles as the rest of it. */}
-        <div className="mt-5 space-y-4">
-          {PRESETS.map((preset) => (
-            <div key={preset.group}>
-              <span className="block font-mono text-[0.625rem] text-muted-foreground uppercase tracking-[0.12em]">
-                {preset.group}
-              </span>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {preset.topics.map((t) => {
-                  const selected = topic === t;
-                  return (
-                    <button
-                      key={t}
-                      type="button"
-                      aria-pressed={selected}
-                      onClick={() => setTopic(t)}
-                      className={cn(
-                        "rounded-sm border px-2.5 py-1.5 text-xs transition-colors",
-                        selected
-                          ? "border-foreground bg-secondary text-foreground"
-                          : "border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground",
-                      )}
-                    >
-                      {t}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </Field>
-
-      <TypesField />
-
-      <div className="grid gap-10 sm:grid-cols-2">
-        <Field label="Difficulty">
-          <div className="grid gap-2">
-            {DIFFICULTIES.map((d) => (
-              <label key={d} className="cursor-pointer">
-                <input
-                  type="radio"
-                  name="difficulty"
-                  value={d}
-                  defaultChecked={d === "MEDIUM"}
-                  className="peer sr-only"
-                />
-                <div className="flex items-baseline justify-between rounded-md border px-3 py-2 text-sm transition-colors peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
-                  <span className="capitalize">{d.toLowerCase()}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {DIFFICULTY_HINTS[d]}
-                  </span>
+    <FormProvider {...form}>
+      <form onSubmit={onSubmit} noValidate className="space-y-10">
+        <Field label="Topic" hint="Anything you want to be tested on.">
+          <Input
+            maxLength={120}
+            autoFocus
+            placeholder="e.g. React hooks, photosynthesis, system design"
+            aria-invalid={form.formState.errors.topic ? true : undefined}
+            className="h-12 text-base"
+            {...form.register("topic")}
+          />
+          {/* Groups are labelled on their own line: inline labels collided with
+              the first chip, and the pill shape fought every other control on
+              this form. Same sharp rectangles as the rest of it. */}
+          <div className="mt-5 space-y-4">
+            {PRESETS.map((preset) => (
+              <div key={preset.group}>
+                <span className="block font-mono text-[0.625rem] text-muted-foreground uppercase tracking-[0.12em]">
+                  {preset.group}
+                </span>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {preset.topics.map((t) => {
+                    const selected = topic === t;
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() =>
+                          form.setValue("topic", t, {
+                            shouldValidate: true,
+                          })
+                        }
+                        className={cn(
+                          "rounded-sm border px-2.5 py-1.5 text-xs transition-colors",
+                          selected
+                            ? "border-foreground bg-secondary text-foreground"
+                            : "border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground",
+                        )}
+                      >
+                        {t}
+                      </button>
+                    );
+                  })}
                 </div>
-              </label>
+              </div>
             ))}
           </div>
-          {/* Not another rung on the ladder — a different contract, so it reads
-              as a switch under the ladder rather than a sixth option. */}
-          <AdaptiveToggle
-            className="mt-3"
-            hint="Starts at the difficulty you picked, then steps up or down as you answer. Ends with a calibrated level, not just a score."
-          />
+          <FieldError errors={[form.formState.errors.topic]} />
         </Field>
 
-        <div className="space-y-10">
-          <CountField count={count} setCount={setCount} />
-          <TimeField />
-        </div>
-      </div>
+        <TypesField />
 
-      <FormFooter state={state} pending={pending} pendingLabel="Preparing…" />
-    </form>
+        <div className="grid gap-10 sm:grid-cols-2">
+          <Field label="Difficulty">
+            <div className="grid gap-2">
+              {DIFFICULTIES.map((d) => (
+                <label key={d} className="cursor-pointer">
+                  <input
+                    type="radio"
+                    value={d}
+                    className="peer sr-only"
+                    {...form.register("difficulty")}
+                  />
+                  <div className="flex items-baseline justify-between rounded-md border px-3 py-2 text-sm transition-colors peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
+                    <span className="capitalize">{d.toLowerCase()}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {DIFFICULTY_HINTS[d]}
+                    </span>
+                  </div>
+                </label>
+              ))}
+            </div>
+            {/* Not another rung on the ladder — a different contract, so it reads
+                as a switch under the ladder rather than a sixth option. */}
+            <AdaptiveToggle
+              className="mt-3"
+              hint="Starts at the difficulty you picked, then steps up or down as you answer. Ends with a calibrated level, not just a score."
+            />
+          </Field>
+
+          <div className="space-y-10">
+            <CountField />
+            <TimeField />
+          </div>
+        </div>
+
+        <FormFooter
+          serverError={serverError}
+          pending={pending}
+          pendingLabel="Preparing…"
+        />
+      </form>
+    </FormProvider>
   );
 }
 
 function JdForm() {
-  const [state, formAction, pending] = useActionState(createJdSession, null);
-  const [jd, setJd] = useState("");
-  const [count, setCount] = useState<number>(10);
+  const form = useForm<z.input<typeof jdFormSchema>>({
+    resolver: zodResolver(jdFormSchema),
+    defaultValues: { jd: "", ...SHARED_DEFAULTS },
+  });
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
-  const len = jd.length;
+  const len = (form.watch("jd") ?? "").length;
+
+  const onSubmit = form.handleSubmit((_values, event) => {
+    const data = new FormData(event?.currentTarget as HTMLFormElement);
+    setServerError(null);
+    startTransition(async () => {
+      const result = await createJdSession(null, data);
+      if (result && !result.ok) setServerError(result.error);
+    });
+  });
 
   return (
-    <form action={formAction} className="space-y-10">
-      <Field
-        label="Job description"
-        hint="Paste the posting — responsibilities and requirements."
-      >
-        <Textarea
-          name="jd"
-          required
-          minLength={JD_MIN}
-          maxLength={JD_MAX}
-          autoFocus
-          rows={10}
-          value={jd}
-          onChange={(e) => setJd(e.target.value)}
-          placeholder="Paste the full job description here — the more concrete the responsibilities and stack, the sharper the interview."
-          className="min-h-56 text-sm leading-relaxed"
-        />
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="max-w-md text-muted-foreground text-xs">
-            The description is read to write your questions. We store the
-            extracted role and a short summary with this session — not the text
-            you paste. Difficulty is set from the seniority in the posting.
-          </span>
-          <span
-            className={cn(
-              "font-mono text-[0.625rem] text-muted-foreground tabular",
-              len > JD_MAX && "text-destructive",
-            )}
-          >
-            {len}/{JD_MAX}
-          </span>
+    <FormProvider {...form}>
+      <form onSubmit={onSubmit} noValidate className="space-y-10">
+        <Field
+          label="Job description"
+          hint="Paste the posting — responsibilities and requirements."
+        >
+          <Textarea
+            autoFocus
+            rows={10}
+            maxLength={JD_MAX}
+            placeholder="Paste the full job description here — the more concrete the responsibilities and stack, the sharper the interview."
+            aria-invalid={form.formState.errors.jd ? true : undefined}
+            className="min-h-56 text-sm leading-relaxed"
+            {...form.register("jd")}
+          />
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <span className="max-w-md text-muted-foreground text-xs">
+              The description is read to write your questions. We store the
+              extracted role and a short summary with this session — not the
+              text you paste. Difficulty is set from the seniority in the
+              posting.
+            </span>
+            <span
+              className={cn(
+                "font-mono text-[0.625rem] text-muted-foreground tabular",
+                len > JD_MAX && "text-destructive",
+              )}
+            >
+              {len}/{JD_MAX}
+            </span>
+          </div>
+          <FieldError errors={[form.formState.errors.jd]} />
+        </Field>
+
+        <TypesField />
+
+        <div className="grid gap-10 sm:grid-cols-2">
+          <CountField />
+          <TimeField />
         </div>
-      </Field>
 
-      <TypesField />
+        <AdaptiveToggle hint="Starts at the role's seniority, then steps up or down as you answer. Ends with a calibrated level, not just a score." />
 
-      <div className="grid gap-10 sm:grid-cols-2">
-        <CountField count={count} setCount={setCount} />
-        <TimeField />
-      </div>
-
-      <AdaptiveToggle hint="Starts at the role's seniority, then steps up or down as you answer. Ends with a calibrated level, not just a score." />
-
-      <FormFooter
-        state={state}
-        pending={pending}
-        pendingLabel="Reading the job description…"
-      />
-    </form>
+        <FormFooter
+          serverError={serverError}
+          pending={pending}
+          pendingLabel="Reading the job description…"
+        />
+      </form>
+    </FormProvider>
   );
 }
 
 function TypesField() {
+  const { register, formState } = useFormContext();
   return (
     <Field label="Question types" hint="Pick at least one.">
       <div className="grid gap-2 sm:grid-cols-3">
@@ -284,10 +356,9 @@ function TypesField() {
           <label key={type} className="cursor-pointer">
             <input
               type="checkbox"
-              name="types"
               value={type}
-              defaultChecked
               className="peer sr-only"
+              {...register("types")}
             />
             <div className="rounded-md border p-3 text-sm transition-colors peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
               {TYPE_LABELS[type]}
@@ -295,17 +366,15 @@ function TypesField() {
           </label>
         ))}
       </div>
+      <FieldError errors={[formState.errors.types]} />
     </Field>
   );
 }
 
-function CountField({
-  count,
-  setCount,
-}: {
-  count: number;
-  setCount: (n: number) => void;
-}) {
+function CountField() {
+  const { register } = useFormContext();
+  const count = Number(useWatch({ name: "questionCount" }) ?? "10");
+
   return (
     <Field label="Questions">
       <div className="grid grid-cols-4 gap-2">
@@ -313,11 +382,9 @@ function CountField({
           <label key={n} className="cursor-pointer">
             <input
               type="radio"
-              name="questionCount"
               value={n}
-              defaultChecked={n === 10}
-              onChange={() => setCount(n)}
               className="peer sr-only"
+              {...register("questionCount")}
             />
             <div className="rounded-md border py-2 text-center font-mono text-sm tabular transition-colors peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
               {n}
@@ -338,17 +405,17 @@ function CountField({
 }
 
 function TimeField() {
+  const { register } = useFormContext();
   return (
     <Field label="Time limit">
       <div className="flex flex-wrap gap-2">
-        {TIME_OPTIONS.map((opt, i) => (
+        {TIME_OPTIONS.map((opt) => (
           <label key={opt.label} className="cursor-pointer">
             <input
               type="radio"
-              name="timeLimitMinutes"
               value={opt.value}
-              defaultChecked={i === 0}
               className="peer sr-only"
+              {...register("timeLimitMinutes")}
             />
             <div className="rounded-md border px-3 py-2 text-xs transition-colors peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
               {opt.label}
@@ -367,12 +434,17 @@ function AdaptiveToggle({
   hint: string;
   className?: string;
 }) {
+  const { register } = useFormContext();
   return (
     <label className={cn("block cursor-pointer", className)}>
-      <input type="checkbox" name="adaptive" className="peer sr-only" />
+      <input
+        type="checkbox"
+        className="peer sr-only"
+        {...register("adaptive")}
+      />
       <div className="rounded-md border border-dashed px-3 py-2 transition-colors peer-checked:border-foreground peer-checked:border-solid peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
         <span className="text-sm">Adaptive</span>
-        <span className="mt-0.5 block text-xs text-muted-foreground">
+        <span className="mt-0.5 block text-muted-foreground text-xs">
           {hint}
         </span>
       </div>
@@ -381,19 +453,19 @@ function AdaptiveToggle({
 }
 
 function FormFooter({
-  state,
+  serverError,
   pending,
   pendingLabel,
 }: {
-  state: { error: string } | null;
+  serverError: string | null;
   pending: boolean;
   pendingLabel: string;
 }) {
   return (
     <>
-      {state?.error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
+      {serverError ? (
+        <p role="alert" className="text-destructive text-sm">
+          {serverError}
         </p>
       ) : null}
 
@@ -408,7 +480,7 @@ function FormFooter({
             "Start interview"
           )}
         </Button>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           No account needed. Sign up later to keep your history.
         </p>
       </div>
@@ -416,6 +488,7 @@ function FormFooter({
   );
 }
 
+/** Label + optional hint header above a control or control group. */
 function Field({
   label,
   hint,
@@ -428,16 +501,16 @@ function Field({
   className?: string;
 }) {
   return (
-    <div className={cn("space-y-3", className)}>
+    <UiField className={cn("gap-3", className)}>
       <div className="flex items-baseline justify-between">
         <Label asChild>
           <DataLabel>{label}</DataLabel>
         </Label>
         {hint ? (
-          <span className="text-xs text-muted-foreground">{hint}</span>
+          <span className="text-muted-foreground text-xs">{hint}</span>
         ) : null}
       </div>
       {children}
-    </div>
+    </UiField>
   );
 }

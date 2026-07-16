@@ -1,5 +1,6 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   GoogleLogoIcon,
   SpinnerGapIcon,
@@ -8,23 +9,33 @@ import {
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useId, useState } from "react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { DataLabel } from "@/components/ui/prose";
 import { authClient, safeNextPath } from "@/lib/auth-client";
-import { cn } from "@/lib/utils";
-
-// Deliberately loose: the server owns the real verdict, and a strict regex here
-// only ever rejects an address that would have worked.
-const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 // Mirrors emailAndPassword.minPasswordLength in src/lib/auth.ts. No account can
 // have a shorter password, so checking it here saves a rate-limited round-trip.
 const MIN_PASSWORD = 8;
 
-type FieldErrors = { email?: string; password?: string };
+const signInSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .min(1, "Enter your email address.")
+    // Deliberately loose: the server owns the real verdict, and a strict regex
+    // only ever rejects an address that would have worked.
+    .regex(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, "That isn't an email address."),
+  password: z
+    .string()
+    .min(MIN_PASSWORD, `Passwords are at least ${MIN_PASSWORD} characters.`),
+});
+
+type SignInValues = z.infer<typeof signInSchema>;
 
 export function SignInForm({
   next,
@@ -34,53 +45,37 @@ export function SignInForm({
   googleEnabled: boolean;
 }) {
   const router = useRouter();
-  const emailId = useId();
-  const passwordId = useId();
-  const formErrorId = useId();
-
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
   const [googlePending, setGooglePending] = useState(false);
+  // Held true from a successful submit until navigation replaces the page, so
+  // the button never flickers back to life mid-redirect.
+  const [redirecting, setRedirecting] = useState(false);
+
+  const form = useForm<SignInValues>({
+    resolver: zodResolver(signInSchema),
+    defaultValues: { email: "", password: "" },
+  });
 
   const destination = safeNextPath(next);
+  const { errors, isSubmitting } = form.formState;
+  const pending = isSubmitting || redirecting;
   const busy = pending || googlePending;
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const data = new FormData(event.currentTarget);
-    const email = String(data.get("email") ?? "").trim();
-    const password = String(data.get("password") ?? "");
-
-    const errors: FieldErrors = {};
-    if (!email) errors.email = "Enter your email address.";
-    else if (!EMAIL.test(email)) errors.email = "That isn't an email address.";
-    if (!password) errors.password = "Enter your password.";
-    else if (password.length < MIN_PASSWORD) {
-      errors.password = `Passwords are at least ${MIN_PASSWORD} characters.`;
-    }
-
-    setFieldErrors(errors);
+  const onSubmit = form.handleSubmit(async ({ email, password }) => {
     setFormError(null);
-    if (Object.keys(errors).length > 0) return;
-
-    setPending(true);
     const result = await authClient.signIn.email({ email, password });
 
     if (result.error) {
-      setPending(false);
       // Whatever better-auth says — wrong password, rate limited, banned — is
       // more use to the reader than a house-written euphemism for it.
       setFormError(result.error.message ?? "Could not sign you in. Try again.");
       return;
     }
 
-    // Stays pending on purpose: the button must not flicker back to life while
-    // the navigation is in flight.
+    setRedirecting(true);
     router.push(destination as Route);
     router.refresh();
-  }
+  });
 
   async function onGoogle() {
     setFormError(null);
@@ -125,30 +120,41 @@ export function SignInForm({
       ) : null}
 
       <form onSubmit={onSubmit} noValidate className="space-y-5">
-        <Field
-          id={emailId}
-          label="Email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          error={fieldErrors.email}
-          autoFocus
-        />
+        <Field>
+          <FieldLabel htmlFor="signin-email">
+            <DataLabel>Email</DataLabel>
+          </FieldLabel>
+          <Input
+            id="signin-email"
+            type="email"
+            autoComplete="email"
+            autoFocus
+            aria-invalid={errors.email ? true : undefined}
+            className="h-10 text-sm"
+            {...form.register("email")}
+          />
+          <FieldError errors={[errors.email]} />
+        </Field>
 
-        <Field
-          id={passwordId}
-          label="Password"
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          error={fieldErrors.password}
-        />
+        <Field>
+          <FieldLabel htmlFor="signin-password">
+            <DataLabel>Password</DataLabel>
+          </FieldLabel>
+          <Input
+            id="signin-password"
+            type="password"
+            autoComplete="current-password"
+            aria-invalid={errors.password ? true : undefined}
+            className="h-10 text-sm"
+            {...form.register("password")}
+          />
+          <FieldError errors={[errors.password]} />
+        </Field>
 
         {formError ? (
           <p
-            id={formErrorId}
             role="alert"
-            className="flex items-start gap-2 border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive"
+            className="flex items-start gap-2 border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive text-xs"
           >
             <WarningIcon
               className="mt-px size-3.5 shrink-0"
@@ -159,13 +165,7 @@ export function SignInForm({
           </p>
         ) : null}
 
-        <Button
-          type="submit"
-          size="lg"
-          className="w-full"
-          disabled={busy}
-          aria-describedby={formError ? formErrorId : undefined}
-        >
+        <Button type="submit" size="lg" className="w-full" disabled={busy}>
           {pending ? (
             <>
               <SpinnerGapIcon className="size-4 animate-spin" />
@@ -177,7 +177,7 @@ export function SignInForm({
         </Button>
       </form>
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-muted-foreground text-xs">
         No account?{" "}
         <Link
           href={
@@ -191,43 +191,6 @@ export function SignInForm({
         </Link>
         .
       </p>
-    </div>
-  );
-}
-
-function Field({
-  id,
-  label,
-  error,
-  className,
-  ...props
-}: React.ComponentProps<typeof Input> & {
-  id: string;
-  label: string;
-  error?: string;
-}) {
-  const errorId = `${id}-error`;
-
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>
-        <DataLabel>{label}</DataLabel>
-      </Label>
-      <Input
-        id={id}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId : undefined}
-        className={cn("h-10 text-sm", className)}
-        {...props}
-      />
-      {error ? (
-        // role="alert" as well as aria-describedby: the latter is only read once
-        // focus reaches the field, so without this a failed submit is announced
-        // as nothing at all.
-        <p id={errorId} role="alert" className="text-xs text-destructive">
-          {error}
-        </p>
-      ) : null}
     </div>
   );
 }

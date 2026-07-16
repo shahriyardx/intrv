@@ -1,16 +1,20 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { SpinnerGapIcon } from "@phosphor-icons/react";
-import { useActionState } from "react";
+import { useState, useTransition } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { DataLabel } from "@/components/ui/prose";
 import {
   DIFFICULTIES,
   type Difficulty,
   QUESTION_TYPES,
   type QuestionType,
+  questionTypeSchema,
 } from "@/lib/schemas";
 import { createScreen } from "@/server/actions/org";
 
@@ -31,6 +35,30 @@ const DIFFICULTY_HINTS: Record<Difficulty, string> = {
 const SCREEN_COUNTS = [5, 10, 15, 20] as const;
 const SCREEN_TIMES = [10, 20, 30, 45] as const;
 
+// Client-side mirror of createScreenSchema in the action — UX only; the action
+// re-validates with its own schema, which stays the security boundary.
+const schema = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(2, "Give the screen a title of at least 2 characters.")
+    .max(120, "Keep the title under 120 characters."),
+  topic: z
+    .string()
+    .trim()
+    .min(2, "Give the topic at least 2 characters.")
+    .max(120, "Keep the topic under 120 characters."),
+  types: z
+    .array(questionTypeSchema)
+    .min(1, "Choose at least one question type."),
+  difficulty: z.enum(DIFFICULTIES),
+  // Radios carry strings; the server does Number(...). Validate the option set.
+  questionCount: z.enum(SCREEN_COUNTS.map(String) as [string, ...string[]]),
+  timeLimitMinutes: z.enum(SCREEN_TIMES.map(String) as [string, ...string[]]),
+});
+
+type Values = z.infer<typeof schema>;
+
 /**
  * Generation is synchronous and can take a minute or two, so the pending state
  * has to be patient and explicit — a bare spinner would read as stuck. On
@@ -38,15 +66,43 @@ const SCREEN_TIMES = [10, 20, 30, 45] as const;
  * report an error.
  */
 export function NewScreenForm({ orgId }: { orgId: string }) {
-  const action = createScreen.bind(null, orgId);
-  const [state, formAction, pending] = useActionState(action, null);
+  const form = useForm<Values>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      title: "",
+      topic: "",
+      types: [...QUESTION_TYPES],
+      difficulty: "MEDIUM",
+      questionCount: "10",
+      timeLimitMinutes: "20",
+    },
+  });
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const { errors } = form.formState;
+
+  const onSubmit = form.handleSubmit((values) => {
+    setServerError(null);
+    startTransition(async () => {
+      const data = new FormData();
+      data.set("title", values.title);
+      data.set("topic", values.topic);
+      for (const type of values.types) data.append("types", type);
+      data.set("difficulty", values.difficulty);
+      data.set("questionCount", String(values.questionCount));
+      data.set("timeLimitMinutes", String(values.timeLimitMinutes));
+      // Success redirects (throws NEXT_REDIRECT); only an error object returns.
+      const result = await createScreen(orgId, null, data);
+      if (result && !result.ok) setServerError(result.error);
+    });
+  });
 
   if (pending) {
     return (
       <div className="flex min-h-72 flex-col items-center justify-center gap-3 rounded-md border border-dashed px-6 py-14 text-center">
         <SpinnerGapIcon className="size-6 animate-spin text-muted-foreground" />
         <p className="font-display text-display-md">Writing the interview…</p>
-        <p className="max-w-sm text-sm text-muted-foreground">
+        <p className="max-w-sm text-muted-foreground text-sm">
           We're generating and freezing the question set now. Every candidate
           answers this exact set, so it's written once — this takes up to a
           couple of minutes. Keep this tab open.
@@ -56,81 +112,89 @@ export function NewScreenForm({ orgId }: { orgId: string }) {
   }
 
   return (
-    <form action={formAction} className="space-y-10">
-      <Field label="Title" hint="What candidates and your team will see.">
-        <Input
-          name="title"
-          required
-          maxLength={120}
-          autoFocus
-          placeholder="e.g. Frontend Engineer — first round"
-          className="h-11"
-        />
+    <form onSubmit={onSubmit} noValidate className="space-y-10">
+      <Field className="gap-3">
+        <Row label="Title" hint="What candidates and your team will see.">
+          <Input
+            id="screen-title"
+            maxLength={120}
+            autoFocus
+            placeholder="e.g. Frontend Engineer — first round"
+            aria-invalid={errors.title ? true : undefined}
+            className="h-11"
+            {...form.register("title")}
+          />
+        </Row>
+        <FieldError errors={[errors.title]} />
       </Field>
 
-      <Field label="Topic" hint="What the questions are about.">
-        <Input
-          name="topic"
-          required
-          maxLength={120}
-          placeholder="e.g. React, TypeScript, and web performance"
-          className="h-11"
-        />
+      <Field className="gap-3">
+        <Row label="Topic" hint="What the questions are about.">
+          <Input
+            id="screen-topic"
+            maxLength={120}
+            placeholder="e.g. React, TypeScript, and web performance"
+            aria-invalid={errors.topic ? true : undefined}
+            className="h-11"
+            {...form.register("topic")}
+          />
+        </Row>
+        <FieldError errors={[errors.topic]} />
       </Field>
 
-      <Field label="Question types" hint="Pick at least one.">
-        <div className="grid gap-2 sm:grid-cols-3">
-          {QUESTION_TYPES.map((type) => (
-            <label key={type} className="cursor-pointer">
-              <input
-                type="checkbox"
-                name="types"
-                value={type}
-                defaultChecked
-                className="peer sr-only"
-              />
-              <div className="rounded-md border p-3 text-sm transition-colors peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
-                {TYPE_LABELS[type]}
-              </div>
-            </label>
-          ))}
-        </div>
+      <Field className="gap-3">
+        <Row label="Question types" hint="Pick at least one.">
+          <div className="grid gap-2 sm:grid-cols-3">
+            {QUESTION_TYPES.map((type) => (
+              <label key={type} className="cursor-pointer">
+                <input
+                  type="checkbox"
+                  value={type}
+                  className="peer sr-only"
+                  {...form.register("types")}
+                />
+                <div className="rounded-md border p-3 text-sm transition-colors peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
+                  {TYPE_LABELS[type]}
+                </div>
+              </label>
+            ))}
+          </div>
+        </Row>
+        <FieldError errors={[errors.types]} />
       </Field>
 
       <div className="grid gap-10 sm:grid-cols-2">
-        <Field label="Difficulty">
+        <Row label="Difficulty">
           <div className="grid gap-2">
             {DIFFICULTIES.map((d) => (
               <label key={d} className="cursor-pointer">
                 <input
                   type="radio"
-                  name="difficulty"
                   value={d}
-                  defaultChecked={d === "MEDIUM"}
                   className="peer sr-only"
+                  {...form.register("difficulty")}
                 />
                 <div className="flex items-baseline justify-between rounded-md border px-3 py-2 text-sm transition-colors peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
                   <span className="capitalize">{d.toLowerCase()}</span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-muted-foreground text-xs">
                     {DIFFICULTY_HINTS[d]}
                   </span>
                 </div>
               </label>
             ))}
           </div>
-        </Field>
+        </Row>
 
         <div className="space-y-10">
-          <Field label="Questions">
+          <Row label="Questions">
             <div className="grid grid-cols-4 gap-2">
               {SCREEN_COUNTS.map((n) => (
                 <label key={n} className="cursor-pointer">
                   <input
                     type="radio"
-                    name="questionCount"
                     value={n}
-                    defaultChecked={n === 10}
                     className="peer sr-only"
+                    {...form.register("questionCount")}
                   />
                   <div className="rounded-md border py-2 text-center font-mono text-sm tabular transition-colors peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
                     {n}
@@ -138,18 +202,17 @@ export function NewScreenForm({ orgId }: { orgId: string }) {
                 </label>
               ))}
             </div>
-          </Field>
+          </Row>
 
-          <Field label="Time limit" hint="Screens are always timed.">
+          <Row label="Time limit" hint="Screens are always timed.">
             <div className="flex flex-wrap gap-2">
               {SCREEN_TIMES.map((m) => (
                 <label key={m} className="cursor-pointer">
                   <input
                     type="radio"
-                    name="timeLimitMinutes"
                     value={m}
-                    defaultChecked={m === 20}
                     className="peer sr-only"
+                    {...form.register("timeLimitMinutes")}
                   />
                   <div className="rounded-md border px-3 py-2 text-xs transition-colors peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
                     {m} min
@@ -157,13 +220,13 @@ export function NewScreenForm({ orgId }: { orgId: string }) {
                 </label>
               ))}
             </div>
-          </Field>
+          </Row>
         </div>
       </div>
 
-      {state?.error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {state.error}
+      {serverError ? (
+        <p role="alert" className="text-destructive text-sm">
+          {serverError}
         </p>
       ) : null}
 
@@ -171,7 +234,7 @@ export function NewScreenForm({ orgId }: { orgId: string }) {
         <Button type="submit" size="lg" className="min-w-44">
           Generate & freeze
         </Button>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           The set is written once and frozen — every candidate answers the same
           questions.
         </p>
@@ -180,7 +243,8 @@ export function NewScreenForm({ orgId }: { orgId: string }) {
   );
 }
 
-function Field({
+/** Label + optional hint header above a control or control group. */
+function Row({
   label,
   hint,
   children,
@@ -192,11 +256,11 @@ function Field({
   return (
     <div className="space-y-3">
       <div className="flex items-baseline justify-between">
-        <Label asChild>
+        <FieldLabel asChild>
           <DataLabel>{label}</DataLabel>
-        </Label>
+        </FieldLabel>
         {hint ? (
-          <span className="text-xs text-muted-foreground">{hint}</span>
+          <span className="text-muted-foreground text-xs">{hint}</span>
         ) : null}
       </div>
       {children}

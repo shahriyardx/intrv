@@ -1,5 +1,6 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   GoogleLogoIcon,
   SpinnerGapIcon,
@@ -8,22 +9,37 @@ import {
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useId, useState } from "react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { DataLabel } from "@/components/ui/prose";
 import { authClient, safeNextPath } from "@/lib/auth-client";
-import { cn } from "@/lib/utils";
-
-// Deliberately loose: the server owns the real verdict, and a strict regex here
-// only ever rejects an address that would have worked.
-const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 // Mirrors emailAndPassword.minPasswordLength in src/lib/auth.ts.
 const MIN_PASSWORD = 8;
 
-type FieldErrors = { name?: string; email?: string; password?: string };
+const signUpSchema = z.object({
+  name: z.string().trim().min(1, "Tell us what to call you.").max(80),
+  email: z
+    .string()
+    .trim()
+    .min(1, "Enter your email address.")
+    // Deliberately loose: the server owns the real verdict.
+    .regex(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, "That isn't an email address."),
+  password: z
+    .string()
+    .min(MIN_PASSWORD, `At least ${MIN_PASSWORD} characters.`),
+});
+
+type SignUpValues = z.infer<typeof signUpSchema>;
 
 export function SignUpForm({
   next,
@@ -33,44 +49,26 @@ export function SignUpForm({
   googleEnabled: boolean;
 }) {
   const router = useRouter();
-  const nameId = useId();
-  const emailId = useId();
-  const passwordId = useId();
-  const formErrorId = useId();
-
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
   const [googlePending, setGooglePending] = useState(false);
+  // Held true from a successful submit until navigation replaces the page.
+  const [redirecting, setRedirecting] = useState(false);
+
+  const form = useForm<SignUpValues>({
+    resolver: zodResolver(signUpSchema),
+    defaultValues: { name: "", email: "", password: "" },
+  });
 
   const destination = safeNextPath(next);
+  const { errors, isSubmitting } = form.formState;
+  const pending = isSubmitting || redirecting;
   const busy = pending || googlePending;
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const data = new FormData(event.currentTarget);
-    const name = String(data.get("name") ?? "").trim();
-    const email = String(data.get("email") ?? "").trim();
-    const password = String(data.get("password") ?? "");
-
-    const errors: FieldErrors = {};
-    if (!name) errors.name = "Tell us what to call you.";
-    if (!email) errors.email = "Enter your email address.";
-    else if (!EMAIL.test(email)) errors.email = "That isn't an email address.";
-    if (password.length < MIN_PASSWORD) {
-      errors.password = `At least ${MIN_PASSWORD} characters.`;
-    }
-
-    setFieldErrors(errors);
+  const onSubmit = form.handleSubmit(async ({ name, email, password }) => {
     setFormError(null);
-    if (Object.keys(errors).length > 0) return;
-
-    setPending(true);
     const result = await authClient.signUp.email({ name, email, password });
 
     if (result.error) {
-      setPending(false);
       // "User already exists" and friends come from better-auth. Surfacing the
       // real message beats a generic failure the reader can't act on.
       setFormError(
@@ -81,9 +79,10 @@ export function SignUpForm({
 
     // No email verification is configured, so sign-up returns a live session and
     // we can go straight through rather than parking on a "check your inbox".
+    setRedirecting(true);
     router.push(destination as Route);
     router.refresh();
-  }
+  });
 
   async function onGoogle() {
     setFormError(null);
@@ -128,41 +127,63 @@ export function SignUpForm({
       ) : null}
 
       <form onSubmit={onSubmit} noValidate className="space-y-5">
-        <Field
-          id={nameId}
-          label="Name"
-          name="name"
-          type="text"
-          autoComplete="name"
-          maxLength={80}
-          error={fieldErrors.name}
-          autoFocus
-        />
+        <Field>
+          <FieldLabel htmlFor="signup-name">
+            <DataLabel>Name</DataLabel>
+          </FieldLabel>
+          <Input
+            id="signup-name"
+            type="text"
+            autoComplete="name"
+            maxLength={80}
+            autoFocus
+            aria-invalid={errors.name ? true : undefined}
+            className="h-10 text-sm"
+            {...form.register("name")}
+          />
+          <FieldError errors={[errors.name]} />
+        </Field>
 
-        <Field
-          id={emailId}
-          label="Email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          error={fieldErrors.email}
-        />
+        <Field>
+          <FieldLabel htmlFor="signup-email">
+            <DataLabel>Email</DataLabel>
+          </FieldLabel>
+          <Input
+            id="signup-email"
+            type="email"
+            autoComplete="email"
+            aria-invalid={errors.email ? true : undefined}
+            className="h-10 text-sm"
+            {...form.register("email")}
+          />
+          <FieldError errors={[errors.email]} />
+        </Field>
 
-        <Field
-          id={passwordId}
-          label="Password"
-          name="password"
-          type="password"
-          autoComplete="new-password"
-          error={fieldErrors.password}
-          hint={`${MIN_PASSWORD} characters minimum`}
-        />
+        <Field>
+          <FieldLabel htmlFor="signup-password">
+            <DataLabel>Password</DataLabel>
+          </FieldLabel>
+          <Input
+            id="signup-password"
+            type="password"
+            autoComplete="new-password"
+            aria-invalid={errors.password ? true : undefined}
+            className="h-10 text-sm"
+            {...form.register("password")}
+          />
+          {errors.password ? (
+            <FieldError errors={[errors.password]} />
+          ) : (
+            <FieldDescription>
+              {MIN_PASSWORD} characters minimum
+            </FieldDescription>
+          )}
+        </Field>
 
         {formError ? (
           <p
-            id={formErrorId}
             role="alert"
-            className="flex items-start gap-2 border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive"
+            className="flex items-start gap-2 border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive text-xs"
           >
             <WarningIcon
               className="mt-px size-3.5 shrink-0"
@@ -173,13 +194,7 @@ export function SignUpForm({
           </p>
         ) : null}
 
-        <Button
-          type="submit"
-          size="lg"
-          className="w-full"
-          disabled={busy}
-          aria-describedby={formError ? formErrorId : undefined}
-        >
+        <Button type="submit" size="lg" className="w-full" disabled={busy}>
           {pending ? (
             <>
               <SpinnerGapIcon className="size-4 animate-spin" />
@@ -191,7 +206,7 @@ export function SignUpForm({
         </Button>
       </form>
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-muted-foreground text-xs">
         Already have an account?{" "}
         <Link
           href={
@@ -205,56 +220,6 @@ export function SignUpForm({
         </Link>
         .
       </p>
-    </div>
-  );
-}
-
-function Field({
-  id,
-  label,
-  hint,
-  error,
-  className,
-  ...props
-}: React.ComponentProps<typeof Input> & {
-  id: string;
-  label: string;
-  hint?: string;
-  error?: string;
-}) {
-  const errorId = `${id}-error`;
-  const hintId = `${id}-hint`;
-  const describedBy =
-    [error ? errorId : null, hint ? hintId : null].filter(Boolean).join(" ") ||
-    undefined;
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-baseline justify-between gap-2">
-        <Label htmlFor={id}>
-          <DataLabel>{label}</DataLabel>
-        </Label>
-        {hint ? (
-          <span id={hintId} className="text-xs text-muted-foreground">
-            {hint}
-          </span>
-        ) : null}
-      </div>
-      <Input
-        id={id}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={describedBy}
-        className={cn("h-10 text-sm", className)}
-        {...props}
-      />
-      {error ? (
-        // role="alert" as well as aria-describedby: the latter is only read once
-        // focus reaches the field, so without this a failed submit is announced
-        // as nothing at all.
-        <p id={errorId} role="alert" className="text-xs text-destructive">
-          {error}
-        </p>
-      ) : null}
     </div>
   );
 }

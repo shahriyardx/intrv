@@ -1,8 +1,11 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { WarningIcon } from "@phosphor-icons/react";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { z } from "zod";
 import { Markdown } from "@/components/markdown";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Field, FieldDescription, FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DataLabel } from "@/components/ui/prose";
@@ -30,18 +34,35 @@ type Post = {
   status: "DRAFT" | "PUBLISHED";
 };
 
+// Client-side mirror of the fields' rules — UX only; savePostAction re-validates
+// and stays the security boundary. The `intent` (draft/publish/unpublish) rides
+// on the clicked submit button, captured from the submit event.
+const schema = z.object({
+  title: z.string().trim().min(1, "Give the post a title.").max(160),
+  slug: z.string().trim().min(1, "The post needs a slug.").max(SLUG_MAX),
+  excerpt: z.string().trim().min(1, "Write a short excerpt.").max(320),
+  body: z.string().trim().min(1, "The body can't be empty."),
+});
+
+type Values = z.infer<typeof schema>;
+
 /**
  * The editor. Every button here is a convenience: savePostAction and
  * deletePostAction each re-check admin themselves, so what this component
  * offers or hides is only about not proposing a move that will be refused.
  */
 export function PostEditor({ post }: { post?: Post }) {
-  const [state, action, pending] = useActionState(savePostAction, null);
-
-  const [title, setTitle] = useState(post?.title ?? "");
-  const [slug, setSlug] = useState(post?.slug ?? "");
-  const [excerpt, setExcerpt] = useState(post?.excerpt ?? "");
-  const [body, setBody] = useState(post?.body ?? "");
+  const form = useForm<Values>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      title: post?.title ?? "",
+      slug: post?.slug ?? "",
+      excerpt: post?.excerpt ?? "",
+      body: post?.body ?? "",
+    },
+  });
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
   const [preview, setPreview] = useState(false);
 
   /**
@@ -51,61 +72,83 @@ export function PostEditor({ post }: { post?: Post }) {
    */
   const [slugTouched, setSlugTouched] = useState(Boolean(post));
 
+  const { errors } = form.formState;
+  const slug = form.watch("slug");
+  const excerptLength = form.watch("excerpt")?.length ?? 0;
+  const body = form.watch("body") ?? "";
+
   const published = post?.status === "PUBLISHED";
   const slugMoved = published && slug !== post.slug;
 
-  useEffect(() => {
-    if (!state) return;
-    if (state.ok) toast.success(state.message);
-    else toast.error(state.error);
-  }, [state]);
-
-  function onTitleChange(value: string) {
-    setTitle(value);
-    if (!slugTouched) setSlug(slugify(value));
-  }
+  const onSubmit = form.handleSubmit((_values, event) => {
+    // Native FormData with the submitter, so the clicked button's
+    // name="intent" value and the hidden id ride along.
+    const nativeEvent = event?.nativeEvent as SubmitEvent | undefined;
+    const data = new FormData(
+      event?.currentTarget as HTMLFormElement,
+      nativeEvent?.submitter,
+    );
+    setServerError(null);
+    startTransition(async () => {
+      const result = await savePostAction(null, data);
+      if (result?.ok) {
+        toast.success(result.message);
+      } else if (result) {
+        toast.error(result.error);
+        setServerError(result.error);
+      }
+    });
+  });
 
   return (
     <div className="space-y-6">
-      <form action={action} className="space-y-6">
+      <form onSubmit={onSubmit} noValidate className="space-y-6">
         {post ? <input type="hidden" name="id" value={post.id} /> : null}
 
         <div className="grid gap-6 md:grid-cols-2">
-          <Field
-            label="Title"
-            hint="Shown on the post page and in the listing."
-            htmlFor="title"
-          >
+          <Field>
+            <Label htmlFor="title">
+              <DataLabel as="span">Title</DataLabel>
+            </Label>
             <Input
               id="title"
-              name="title"
-              value={title}
-              onChange={(event) => onTitleChange(event.target.value)}
-              required
               maxLength={160}
               placeholder="What makes a good interview question"
+              aria-invalid={errors.title ? true : undefined}
+              {...form.register("title", {
+                onChange: (event) => {
+                  if (!slugTouched) {
+                    form.setValue("slug", slugify(event.target.value));
+                  }
+                },
+              })}
             />
+            <FieldError errors={[errors.title]} />
+            <FieldDescription>
+              Shown on the post page and in the listing.
+            </FieldDescription>
           </Field>
 
-          <Field
-            label="Slug"
-            hint={`intrv.app/blog/${slug || "…"}`}
-            htmlFor="slug"
-          >
+          <Field>
+            <Label htmlFor="slug">
+              <DataLabel as="span">Slug</DataLabel>
+            </Label>
             <Input
               id="slug"
-              name="slug"
-              value={slug}
-              onChange={(event) => {
-                setSlugTouched(true);
-                setSlug(event.target.value);
-              }}
-              onBlur={(event) => setSlug(slugify(event.target.value))}
-              required
               maxLength={SLUG_MAX}
               className="font-mono"
               placeholder="a-good-interview-question"
+              aria-invalid={errors.slug ? true : undefined}
+              {...form.register("slug", {
+                onChange: () => setSlugTouched(true),
+                onBlur: (event) =>
+                  form.setValue("slug", slugify(event.target.value)),
+              })}
             />
+            <FieldError errors={[errors.slug]} />
+            <FieldDescription className="truncate">
+              intrv.app/blog/{slug || "…"}
+            </FieldDescription>
           </Field>
         </div>
 
@@ -113,7 +156,7 @@ export function PostEditor({ post }: { post?: Post }) {
           // A published slug is a live URL. Changing it is allowed — but it is
           // a move, not an edit, and the author should be told before saving
           // rather than discovering it from a broken link later.
-          <p className="flex items-start gap-2 border-l-2 border-partial bg-partial-muted px-4 py-3 text-sm">
+          <p className="flex items-start gap-2 border-partial border-l-2 bg-partial-muted px-4 py-3 text-sm">
             <WarningIcon
               weight="fill"
               aria-hidden
@@ -128,28 +171,31 @@ export function PostEditor({ post }: { post?: Post }) {
           </p>
         ) : null}
 
-        <Field
-          label="Excerpt"
-          hint="The listing text and the meta description. One or two sentences."
-          htmlFor="excerpt"
-        >
+        <Field>
+          <Label htmlFor="excerpt">
+            <DataLabel as="span">Excerpt</DataLabel>
+          </Label>
           <Textarea
             id="excerpt"
-            name="excerpt"
-            value={excerpt}
-            onChange={(event) => setExcerpt(event.target.value)}
-            required
             maxLength={320}
             rows={2}
+            aria-invalid={errors.excerpt ? true : undefined}
+            {...form.register("excerpt")}
           />
-          <Counter value={excerpt.length} max={320} />
+          <FieldError errors={[errors.excerpt]} />
+          <div className="flex items-baseline justify-between gap-3">
+            <FieldDescription>
+              The listing text and the meta description. One or two sentences.
+            </FieldDescription>
+            <Counter value={excerptLength} max={320} />
+          </div>
         </Field>
 
         <div className="space-y-2">
           <div className="flex items-end justify-between gap-3">
             <div>
               <DataLabel as="span">Body</DataLabel>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-muted-foreground text-xs">
                 Markdown, GitHub flavour. Raw HTML is not rendered.
               </p>
             </div>
@@ -173,13 +219,11 @@ export function PostEditor({ post }: { post?: Post }) {
           <div className={cn(preview && "hidden")}>
             <Textarea
               id="body"
-              name="body"
-              value={body}
-              onChange={(event) => setBody(event.target.value)}
-              required
               rows={22}
               className="font-mono text-sm leading-relaxed"
               placeholder={"## A heading\n\nA paragraph."}
+              aria-invalid={errors.body ? true : undefined}
+              {...form.register("body")}
             />
           </div>
 
@@ -190,16 +234,17 @@ export function PostEditor({ post }: { post?: Post }) {
                 // different renderer would be a different page.
                 <Markdown>{body}</Markdown>
               ) : (
-                <p className="py-12 text-center text-sm text-muted-foreground">
+                <p className="py-12 text-center text-muted-foreground text-sm">
                   Nothing to preview yet.
                 </p>
               )}
             </div>
           ) : null}
+          <FieldError errors={[errors.body]} />
         </div>
 
-        {state && !state.ok ? (
-          <p className="text-sm text-incorrect">{state.error}</p>
+        {serverError ? (
+          <p className="text-incorrect text-sm">{serverError}</p>
         ) : null}
 
         <div className="flex flex-wrap items-center gap-2 border-t pt-5">
@@ -236,7 +281,7 @@ export function PostEditor({ post }: { post?: Post }) {
             </Button>
           ) : null}
 
-          <span className="ml-auto text-xs text-muted-foreground">
+          <span className="ml-auto text-muted-foreground text-xs">
             {pending ? "Saving…" : null}
           </span>
         </div>
@@ -249,35 +294,11 @@ export function PostEditor({ post }: { post?: Post }) {
   );
 }
 
-function Field({
-  label,
-  hint,
-  htmlFor,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  htmlFor: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={htmlFor}>
-        <DataLabel as="span">{label}</DataLabel>
-      </Label>
-      {children}
-      {hint ? (
-        <p className="truncate text-xs text-muted-foreground">{hint}</p>
-      ) : null}
-    </div>
-  );
-}
-
 function Counter({ value, max }: { value: number; max: number }) {
   return (
     <p
       className={cn(
-        "text-right font-mono text-[0.6875rem] tabular",
+        "shrink-0 text-right font-mono text-[0.6875rem] tabular",
         value > max * 0.9 ? "text-partial" : "text-muted-foreground",
       )}
     >
@@ -312,6 +333,11 @@ function ToggleButton({
   );
 }
 
+/**
+ * A single-button destructive action behind a confirm dialog — deliberately
+ * left as a native action form, not react-hook-form: there are no fields to
+ * validate, only a confirmation.
+ */
 function DeletePost({ id, title }: { id: string; title: string }) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(deletePostAction, null);
@@ -323,8 +349,8 @@ function DeletePost({ id, title }: { id: string; title: string }) {
   return (
     <div className="flex items-center justify-between gap-4 rounded-md border border-dashed px-5 py-4">
       <div>
-        <p className="text-sm font-medium">Delete this post</p>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="font-medium text-sm">Delete this post</p>
+        <p className="mt-1 text-muted-foreground text-xs">
           Gone for good, along with its URL. There is no undo.
         </p>
       </div>

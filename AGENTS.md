@@ -239,8 +239,18 @@ non-streaming calls stay on `httpBatchLink`.
   `src/server/dal/owner.ts` is the exception and stays import-free so the access
   rules are unit-testable without a database.
 - **DAL for RSC reads, tRPC for the client-facing API, Server Actions for
-  mutations/forms.** Don't route RSC data through tRPC — `createCaller` re-runs
+  mutations.** Don't route RSC data through tRPC — `createCaller` re-runs
   context, middleware, and validation for code the DAL already exposes.
+- **Field forms are react-hook-form + `zodResolver` + shadcn `Field`
+  (`src/components/ui/field.tsx`) on the client, submitting to the same
+  zod-validated Server Action (or `authClient` for auth).** This makes them
+  JS-required — a deliberate trade for inline field validation and error UX.
+  RHF's client validation is UX only, **never** the security boundary: the
+  Server Action re-validates everything with the same zod schema, so never
+  weaken a server-side check to lean on the client. Labels wrap `DataLabel`
+  inside `FieldLabel` to keep the mono look; the action-level error line stays
+  for server-only failures (slug collisions, AI failures). Single-button action
+  forms stay native `<form action={…}>`.
 - Server Functions are POST endpoints reachable directly, so **every action
   re-establishes its viewer and re-checks access** rather than trusting the UI
   that called it.
