@@ -43,6 +43,109 @@ returns `null` (never `{}`) for anonymous viewers.
   PPR flushes the shell before `notFound()` runs, so the status is 200 while the
   body is the 404 page; the body discloses nothing.
 
+## Session modes — where the questions come from
+
+`SessionMode` (schema enum) records *why* a session exists and, load-bearingly,
+whether it generates live or replays a frozen set:
+
+- **CUSTOM / JOB_DESCRIPTION / REVIEW generate live.** Created `status:
+  GENERATING` with no Question rows; the tRPC `interview.generate` stream
+  (`src/trpc/routers/interview.ts`) writes them as DeepSeek produces them.
+  JOB_DESCRIPTION and REVIEW differ from CUSTOM *only* by a `brief` fed to the
+  generator (the extracted JD profile / the due-concept list) — same live path,
+  not a different one.
+- **DAILY / REMATCH / SCREEN are pre-seeded.** Created `status: READY` with
+  Question rows already copied from a frozen source (`DailyChallenge.questions`,
+  the source session's questions, `Screen.questions`) and `startedAt`/`expiresAt`
+  set at creation. The runner's `generate` query sees `status !== GENERATING`
+  and **replays from the DB** — it never calls the model. Do not "fix" one of
+  these by setting it GENERATING: that regenerates and defeats the point (every
+  taker must answer the *identical* set).
+
+The frozen JSON these three copy from carries **answer keys** and is
+`server-only` in every case. Never `select` it into anything client-bound; the
+copy into Question rows happens entirely server-side.
+
+## Adaptive sessions
+
+`InterviewSession.adaptive` switches `interview.generate` from `streamStandard`
+to `streamAdaptive`. The stepping/calibration math lives in
+`src/server/ai/adaptive.ts` (import-free, unit-tested) and is the single source
+of truth.
+
+- Generated in **batches of 3** (`ADAPTIVE_BATCH`). Between batches it waits for
+  that batch's objective (MCQ/TRUE_FALSE) answers, grades them **server-side
+  against the stored key** (the key never leaves the server), and steps the
+  rung: `≥ 2/3` correct → up, `≤ 1/3` → down, else hold; a batch with no
+  answered objective questions holds (never guess a direction from nothing).
+- The wait is polled, **capped at 15 min** (`ANSWER_WAIT_CAP_MS`), and abortable
+  — a student who walks away proceeds at the same rung rather than hanging.
+- **The clock starts at the first batch**, not when the whole set exists
+  (`startedAt`/`expiresAt` are set on the first yield). Otherwise a timed
+  adaptive session never ticks while it waits for answers.
+- `Question.difficulty` is the **per-question rung**; `null` means "the session's
+  difficulty" (non-adaptive). The result page reads it via `calibratedLevel()`.
+
+## Learning loop (spaced repetition)
+
+`submitSession` calls `afterSessionGraded` (`src/server/learning/hooks.ts`) once
+a session reaches GRADED, **inside a try/catch — it never throws outward.** A
+learning-loop failure must not cost the student their result. It delegates to
+`scheduleReviews` (`src/server/learning/reviews.ts`):
+
+- A normal graded session **creates work**: each missed concept becomes (or
+  resets to) a stage-0 `ReviewItem` due in 1 day. "Missed" = unanswered,
+  `isCorrect = false`, or score `< 60` (the same floor submitSession uses).
+- A REVIEW session **resolves work**: a concept answered cleanly climbs the
+  `1d → 3d → 7d` ladder then retires; a re-miss resets it and counts a lapse.
+- Items are keyed `@@unique([userId, topic, concept])`; the active queue is
+  capped at **200** per user (`capActiveItems` retires the longest-overdue
+  overflow).
+- **Anonymous and SCREEN sessions no-op** — neither feeds a signed-in user's
+  study loop.
+
+## Daily challenge
+
+One shared `DailyChallenge` row per **UTC day** (`dateKey` = `YYYY-MM-DD`,
+unique). `getOrCreateDailyChallenge` (`src/server/dal/daily.ts`) fast-paths a
+lookup; only the day's first *player* generates, behind
+`pg_advisory_xact_lock(84749, 2012)` — the **admin claim is (84749, 2011)**, and
+the int4-pair form is mandatory because this target is ES2017 (**no BigInt
+literals**). Generation runs **inside the txn**, holding the lock for its full
+~60–120s (txn `timeout` raised to 200s): once per UTC day, everyone else
+fast-paths or waits behind it exactly once. `getTodayDailyChallenge` is
+read-only, so a `/daily` GET never generates. `DailyChallenge.questions` carries
+answer keys → server-only.
+
+## Organizations & screening
+
+Access mirrors `/admin`'s non-disclosure doctrine. `src/server/dal/org.ts`
+resolves the viewer's `OrgMember` role first and returns **null (→ `notFound()`),
+never a 403**, for non-members — a stranger who guesses a slug or screen id
+learns nothing about whether it exists.
+
+- `Screen.questions` is the frozen set **with answer keys** → server-only. The
+  public candidate view (`getScreenByInviteToken`) never selects it.
+- **Candidates must not see their own score.** The SCREEN result page gates on
+  `getScreenGate`; only an org member sees the graded result.
+- `integrity` (focus-loss / paste counters) is a **client-reported signal only**,
+  stored for `mode SCREEN` only, re-validated with `integritySchema` on read,
+  and shown only to org members.
+
+## Leaderboard, XP & naming
+
+- **`mode SCREEN` is excluded everywhere points are computed** — a screening
+  attempt is a recruiter's private process, not play. `leaderboard.ts` is the
+  source of truth (both `getLeaderboard` and `getViewerStanding` filter
+  `mode != 'SCREEN'`); the XP/streak DAL (`src/server/dal/learning.ts`) reuses
+  the exported `DIFFICULTY_MULTIPLIER` so the two formulas can't drift, and
+  excludes SCREEN too.
+- **A taker is named only when `user` exists AND `!banned` AND
+  `!leaderboardOptOut`** — otherwise the surface shows "Anonymous"/"Someone".
+  This three-part rule is deliberately duplicated across daily standings
+  (`daily.ts`), the challenge/rematch pages (`challenge.ts`), and the share badge
+  (`share.ts`). Change one, check the others.
+
 ## Stack
 
 Next 16.2.10 (App Router, `cacheComponents: true`) · React 19.2 · tRPC v11 ·
@@ -85,6 +188,12 @@ These are all verified against the installed packages — not guesses.
 - **`forbidden()`/`unauthorized()` are experimental** (need
   `experimental.authInterrupts`). Use `redirect()`.
 - **Parallel route slots require `default.tsx`** or the build fails.
+- **Typed routes go stale mid-session.** A newly added route makes `next`'s
+  `Link`/`redirect()` reject its *own* href — `tsc` fails on `href="/new-route"`
+  until `.next/types/routes.d.ts` is regenerated by `next build` or a dev-server
+  restart. A running `next dev` compiles and serves the new route (200) but does
+  **not** rewrite that types file. It is not a code bug and casting it away is
+  wrong; it clears at the next build/restart.
 - **`_folder` is private and non-routable.** Use `(group)` for organization.
 - **better-auth: `nextCookies()` must be last** in the plugins array, or cookies
   set during Server Actions are silently dropped.

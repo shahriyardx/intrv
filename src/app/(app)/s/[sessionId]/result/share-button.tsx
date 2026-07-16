@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon, LinkSimpleIcon, PrinterIcon } from "@phosphor-icons/react";
+import { CheckIcon, LinkSimpleIcon } from "@phosphor-icons/react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -25,39 +25,32 @@ export function ShareButton({
   };
 
   return (
-    <>
-      <Button variant="outline" size="sm" onClick={() => window.print()}>
-        <PrinterIcon className="size-4" />
-        PDF
-      </Button>
-
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={pending}
-        onClick={() => {
-          if (id) {
-            void copy(id);
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={pending}
+      onClick={() => {
+        if (id) {
+          void copy(id);
+          return;
+        }
+        start(async () => {
+          const result = await createShareLink(sessionId);
+          if (!result.ok) {
+            toast.error(result.error);
             return;
           }
-          start(async () => {
-            const result = await createShareLink(sessionId);
-            if (!result.ok) {
-              toast.error(result.error);
-              return;
-            }
-            setId(result.shareId);
-            await copy(result.shareId);
-          });
-        }}
-      >
-        {copied ? (
-          <CheckIcon className="size-4" />
-        ) : (
-          <LinkSimpleIcon className="size-4" />
-        )}
-        {copied ? "Copied" : "Share"}
-      </Button>
-    </>
+          setId(result.shareId);
+          await copy(result.shareId);
+        });
+      }}
+    >
+      {copied ? (
+        <CheckIcon className="size-4" />
+      ) : (
+        <LinkSimpleIcon className="size-4" />
+      )}
+      {copied ? "Copied" : "Share"}
+    </Button>
   );
 }

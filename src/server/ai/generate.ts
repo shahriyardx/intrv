@@ -21,6 +21,13 @@ export type GenerateInput = {
    * system prompt — so the cacheable prefix stays byte-identical.
    */
   brief?: string;
+  /**
+   * Prompts already asked in earlier batches of the same session. Adaptive
+   * generation calls this function once per rung, so without a seed each call
+   * would forget what the previous ones produced and repeat it. Seeds both the
+   * dedup set and the avoid-list; the same AVOID_WINDOW cap still applies.
+   */
+  avoidSeed?: string[];
   sessionId?: string;
   signal?: AbortSignal;
 };
@@ -69,6 +76,17 @@ export async function* generateQuestionsStream(
 ): AsyncGenerator<NormalizedQuestion> {
   const seen = new Set<string>();
   const asked: string[] = [];
+
+  // Seed from earlier batches so an adaptive session's later rungs don't restate
+  // questions already asked. Fingerprints match the dedup key computed below.
+  for (const prompt of input.avoidSeed ?? []) {
+    const fingerprint = prompt.toLowerCase().replace(/\s+/g, " ").trim();
+    if (fingerprint) {
+      seen.add(fingerprint);
+      asked.push(prompt);
+    }
+  }
+
   let produced = 0;
   let passes = 0;
 

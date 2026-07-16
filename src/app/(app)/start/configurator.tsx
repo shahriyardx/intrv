@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DataLabel } from "@/components/ui/prose";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { JD_MAX, JD_MIN } from "@/lib/jd";
 import {
   DIFFICULTIES,
   type Difficulty,
@@ -15,6 +18,7 @@ import {
 } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 import { createInterviewSession } from "@/server/actions/interview";
+import { createJdSession } from "@/server/actions/jd";
 
 const TYPE_LABELS: Record<QuestionType, string> = {
   MCQ: "Multiple choice",
@@ -85,7 +89,34 @@ const PRESETS: { group: string; topics: string[] }[] = [
   },
 ];
 
+/**
+ * Two ways in: pick a topic, or paste a job description and let us read the role
+ * out of it. The forms share every control except how they name the subject —
+ * topic vs. extracted role/seniority.
+ */
 export function Configurator() {
+  return (
+    <Tabs defaultValue="topic">
+      <TabsList className="mb-8 h-9">
+        <TabsTrigger value="topic" className="px-4 text-sm">
+          By topic
+        </TabsTrigger>
+        <TabsTrigger value="jd" className="px-4 text-sm">
+          From a job description
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="topic">
+        <TopicForm />
+      </TabsContent>
+      <TabsContent value="jd">
+        <JdForm />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+function TopicForm() {
   const [state, formAction, pending] = useActionState(
     createInterviewSession,
     null,
@@ -143,24 +174,7 @@ export function Configurator() {
         </div>
       </Field>
 
-      <Field label="Question types" hint="Pick at least one.">
-        <div className="grid gap-2 sm:grid-cols-3">
-          {QUESTION_TYPES.map((type) => (
-            <label key={type} className="cursor-pointer">
-              <input
-                type="checkbox"
-                name="types"
-                value={type}
-                defaultChecked
-                className="peer sr-only"
-              />
-              <div className="rounded-md border p-3 text-sm transition-colors peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
-                {TYPE_LABELS[type]}
-              </div>
-            </label>
-          ))}
-        </div>
-      </Field>
+      <TypesField />
 
       <div className="grid gap-10 sm:grid-cols-2">
         <Field label="Difficulty">
@@ -185,68 +199,198 @@ export function Configurator() {
           </div>
           {/* Not another rung on the ladder — a different contract, so it reads
               as a switch under the ladder rather than a sixth option. */}
-          <label className="mt-3 block cursor-pointer">
-            <input type="checkbox" name="adaptive" className="peer sr-only" />
-            <div className="rounded-md border border-dashed px-3 py-2 transition-colors peer-checked:border-solid peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
-              <span className="text-sm">Adaptive</span>
-              <span className="mt-0.5 block text-xs text-muted-foreground">
-                Starts at the difficulty you picked, then steps up or down as
-                you answer. Ends with a calibrated level, not just a score.
-              </span>
-            </div>
-          </label>
+          <AdaptiveToggle
+            className="mt-3"
+            hint="Starts at the difficulty you picked, then steps up or down as you answer. Ends with a calibrated level, not just a score."
+          />
         </Field>
 
         <div className="space-y-10">
-          <Field label="Questions">
-            <div className="grid grid-cols-4 gap-2">
-              {QUESTION_COUNTS.map((n) => (
-                <label key={n} className="cursor-pointer">
-                  <input
-                    type="radio"
-                    name="questionCount"
-                    value={n}
-                    defaultChecked={n === 10}
-                    onChange={() => setCount(n)}
-                    className="peer sr-only"
-                  />
-                  <div className="rounded-md border py-2 text-center font-mono text-sm tabular transition-colors peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
-                    {n}
-                  </div>
-                </label>
-              ))}
-            </div>
-            {count >= 30 ? (
-              // Three questions per model call, so a long set keeps arriving for
-              // a couple of minutes. Better to say so than to look stuck.
-              <p className="mt-2 text-muted-foreground text-xs">
-                {count} questions take a few minutes to finish writing. You can
-                start on the first ones straight away.
-              </p>
-            ) : null}
-          </Field>
-
-          <Field label="Time limit">
-            <div className="flex flex-wrap gap-2">
-              {TIME_OPTIONS.map((opt, i) => (
-                <label key={opt.label} className="cursor-pointer">
-                  <input
-                    type="radio"
-                    name="timeLimitMinutes"
-                    value={opt.value}
-                    defaultChecked={i === 0}
-                    className="peer sr-only"
-                  />
-                  <div className="rounded-md border px-3 py-2 text-xs transition-colors peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
-                    {opt.label}
-                  </div>
-                </label>
-              ))}
-            </div>
-          </Field>
+          <CountField count={count} setCount={setCount} />
+          <TimeField />
         </div>
       </div>
 
+      <FormFooter state={state} pending={pending} pendingLabel="Preparing…" />
+    </form>
+  );
+}
+
+function JdForm() {
+  const [state, formAction, pending] = useActionState(createJdSession, null);
+  const [jd, setJd] = useState("");
+  const [count, setCount] = useState<number>(10);
+
+  const len = jd.length;
+
+  return (
+    <form action={formAction} className="space-y-10">
+      <Field
+        label="Job description"
+        hint="Paste the posting — responsibilities and requirements."
+      >
+        <Textarea
+          name="jd"
+          required
+          minLength={JD_MIN}
+          maxLength={JD_MAX}
+          autoFocus
+          rows={10}
+          value={jd}
+          onChange={(e) => setJd(e.target.value)}
+          placeholder="Paste the full job description here — the more concrete the responsibilities and stack, the sharper the interview."
+          className="min-h-56 text-sm leading-relaxed"
+        />
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="max-w-md text-muted-foreground text-xs">
+            The description is read to write your questions. We store the
+            extracted role and a short summary with this session — not the text
+            you paste. Difficulty is set from the seniority in the posting.
+          </span>
+          <span
+            className={cn(
+              "font-mono text-[0.625rem] text-muted-foreground tabular",
+              len > JD_MAX && "text-destructive",
+            )}
+          >
+            {len}/{JD_MAX}
+          </span>
+        </div>
+      </Field>
+
+      <TypesField />
+
+      <div className="grid gap-10 sm:grid-cols-2">
+        <CountField count={count} setCount={setCount} />
+        <TimeField />
+      </div>
+
+      <AdaptiveToggle hint="Starts at the role's seniority, then steps up or down as you answer. Ends with a calibrated level, not just a score." />
+
+      <FormFooter
+        state={state}
+        pending={pending}
+        pendingLabel="Reading the job description…"
+      />
+    </form>
+  );
+}
+
+function TypesField() {
+  return (
+    <Field label="Question types" hint="Pick at least one.">
+      <div className="grid gap-2 sm:grid-cols-3">
+        {QUESTION_TYPES.map((type) => (
+          <label key={type} className="cursor-pointer">
+            <input
+              type="checkbox"
+              name="types"
+              value={type}
+              defaultChecked
+              className="peer sr-only"
+            />
+            <div className="rounded-md border p-3 text-sm transition-colors peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
+              {TYPE_LABELS[type]}
+            </div>
+          </label>
+        ))}
+      </div>
+    </Field>
+  );
+}
+
+function CountField({
+  count,
+  setCount,
+}: {
+  count: number;
+  setCount: (n: number) => void;
+}) {
+  return (
+    <Field label="Questions">
+      <div className="grid grid-cols-4 gap-2">
+        {QUESTION_COUNTS.map((n) => (
+          <label key={n} className="cursor-pointer">
+            <input
+              type="radio"
+              name="questionCount"
+              value={n}
+              defaultChecked={n === 10}
+              onChange={() => setCount(n)}
+              className="peer sr-only"
+            />
+            <div className="rounded-md border py-2 text-center font-mono text-sm tabular transition-colors peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
+              {n}
+            </div>
+          </label>
+        ))}
+      </div>
+      {count >= 30 ? (
+        // Three questions per model call, so a long set keeps arriving for a
+        // couple of minutes. Better to say so than to look stuck.
+        <p className="mt-2 text-muted-foreground text-xs">
+          {count} questions take a few minutes to finish writing. You can start
+          on the first ones straight away.
+        </p>
+      ) : null}
+    </Field>
+  );
+}
+
+function TimeField() {
+  return (
+    <Field label="Time limit">
+      <div className="flex flex-wrap gap-2">
+        {TIME_OPTIONS.map((opt, i) => (
+          <label key={opt.label} className="cursor-pointer">
+            <input
+              type="radio"
+              name="timeLimitMinutes"
+              value={opt.value}
+              defaultChecked={i === 0}
+              className="peer sr-only"
+            />
+            <div className="rounded-md border px-3 py-2 text-xs transition-colors peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
+              {opt.label}
+            </div>
+          </label>
+        ))}
+      </div>
+    </Field>
+  );
+}
+
+function AdaptiveToggle({
+  hint,
+  className,
+}: {
+  hint: string;
+  className?: string;
+}) {
+  return (
+    <label className={cn("block cursor-pointer", className)}>
+      <input type="checkbox" name="adaptive" className="peer sr-only" />
+      <div className="rounded-md border border-dashed px-3 py-2 transition-colors peer-checked:border-foreground peer-checked:border-solid peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
+        <span className="text-sm">Adaptive</span>
+        <span className="mt-0.5 block text-xs text-muted-foreground">
+          {hint}
+        </span>
+      </div>
+    </label>
+  );
+}
+
+function FormFooter({
+  state,
+  pending,
+  pendingLabel,
+}: {
+  state: { error: string } | null;
+  pending: boolean;
+  pendingLabel: string;
+}) {
+  return (
+    <>
       {state?.error ? (
         <p role="alert" className="text-sm text-destructive">
           {state.error}
@@ -258,7 +402,7 @@ export function Configurator() {
           {pending ? (
             <>
               <SpinnerGapIcon className="size-4 animate-spin" />
-              Preparing…
+              {pendingLabel}
             </>
           ) : (
             "Start interview"
@@ -268,7 +412,7 @@ export function Configurator() {
           No account needed. Sign up later to keep your history.
         </p>
       </div>
-    </form>
+    </>
   );
 }
 

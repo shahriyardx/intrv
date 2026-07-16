@@ -29,6 +29,13 @@ type Props = {
    * submit. Regular practice never records this — there is no reader for it.
    */
   trackIntegrity?: boolean;
+  /**
+   * Adaptive sessions deliver questions in rung-sized batches and pause to grade
+   * the last batch before writing the next. The user reaches the final arrived
+   * question while more are legitimately locked, so the wait needs explaining as
+   * "answer to unlock" rather than "the model is slow".
+   */
+  adaptive?: boolean;
 };
 
 export function Runner({
@@ -37,6 +44,7 @@ export function Runner({
   expectedCount,
   expiresAt,
   trackIntegrity = false,
+  adaptive = false,
 }: Props) {
   const trpc = useTRPC();
 
@@ -190,7 +198,9 @@ export function Runner({
             {!allArrived ? (
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <SpinnerGapIcon className="size-3 animate-spin" />
-                writing {questions.length}/{expectedCount}
+                {adaptive
+                  ? "adapting to your level"
+                  : `writing ${questions.length}/${expectedCount}`}
               </span>
             ) : null}
             {expiresAt ? (
@@ -209,6 +219,13 @@ export function Runner({
           disabled={submitting}
         />
       </div>
+
+      {adaptive && !allArrived && current === questions.length - 1 ? (
+        <p className="rounded-md border border-dashed px-3 py-2 text-center text-xs text-muted-foreground">
+          Answer these to unlock the next questions — difficulty adapts to how
+          you're doing.
+        </p>
+      ) : null}
 
       <div className="flex items-center justify-between gap-4 border-t pt-6">
         <Button

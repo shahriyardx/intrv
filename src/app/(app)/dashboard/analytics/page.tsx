@@ -9,6 +9,7 @@ import {
   questionTypeLabel,
   truncate,
 } from "@/components/analytics/format";
+import { MasteryMap } from "@/components/analytics/mastery-map";
 import {
   type BarDatum,
   ScoreBarChart,
@@ -33,18 +34,23 @@ import {
   getTopicPerformance,
   getTypeAccuracy,
 } from "@/server/dal/analytics";
+import { getMastery } from "@/server/dal/learning";
 import { getViewer } from "@/server/dal/session";
+
+/** The mastery grid is a study aid, not an archive — cap it and count the rest. */
+const MASTERY_ROWS = 30;
 
 export const metadata: Metadata = { title: "Analytics" };
 
 export default async function AnalyticsPage() {
   const viewer = await getViewer();
 
-  const [trend, topics, concepts, types] = await Promise.all([
+  const [trend, topics, concepts, types, mastery] = await Promise.all([
     getScoreTrend(viewer, { limit: 30 }),
     getTopicPerformance(viewer, { limit: 10 }),
     getConceptAccuracy(viewer, { limit: 12 }),
     getTypeAccuracy(viewer),
+    getMastery(viewer),
   ]);
 
   if (trend.length === 0) {
@@ -194,6 +200,22 @@ export default async function AnalyticsPage() {
       >
         {conceptData.length > 0 ? (
           <ScoreBarChart data={conceptData} labelWidth={148} />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            None of your graded questions carry concept tags yet.
+          </p>
+        )}
+      </ChartPanel>
+
+      <ChartPanel
+        title="Mastery"
+        description="Every concept you've been graded on, weakest first. The bar is your correct rate; a due marker means it's queued for a spaced-repetition review."
+      >
+        {mastery.concepts.length > 0 ? (
+          <MasteryMap
+            concepts={mastery.concepts.slice(0, MASTERY_ROWS)}
+            remaining={Math.max(mastery.concepts.length - MASTERY_ROWS, 0)}
+          />
         ) : (
           <p className="text-sm text-muted-foreground">
             None of your graded questions carry concept tags yet.

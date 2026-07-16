@@ -7,7 +7,7 @@ import { Configurator } from "./configurator";
 export const metadata: Metadata = {
   title: "Start an interview",
   description:
-    "Pick a topic, a difficulty, and how many questions. We generate the interview and grade it.",
+    "Pick a topic or paste a job description. We generate the interview and grade it.",
 };
 
 export default function StartPage() {

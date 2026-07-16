@@ -3,10 +3,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ResultView } from "@/components/session/result-view";
+import { PdfButton } from "@/components/share/pdf-button";
+import { PrintHeader } from "@/components/share/print-header";
+import { ScoreCard } from "@/components/share/score-card";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
-import { DataLabel } from "@/components/ui/prose";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getSharedSession } from "@/server/dal/share";
 
@@ -58,9 +60,14 @@ async function SharedResult({ params }: Props) {
 
   return (
     <>
-      <div className="mb-8">
-        <DataLabel>Shared result</DataLabel>
-        <p className="mt-1 font-display text-display-md">{session.topic}</p>
+      <PrintHeader session={session} />
+
+      <div className="no-print mb-8 flex items-center justify-end">
+        <PdfButton />
+      </div>
+
+      <div className="mb-12">
+        <ScoreCard session={session} />
       </div>
 
       <ResultView session={session} />

@@ -4,7 +4,7 @@ import OpenAI from "openai";
 import type { z } from "zod";
 import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
-import { estimateCostUsd, type ModelId } from "@/server/ai/models";
+import { estimateCostUsd, MODELS, type ModelId } from "@/server/ai/models";
 
 /** Thrown for conditions the caller can act on; message is safe to log, not to show. */
 export class AiError extends Error {
@@ -79,7 +79,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 type CallOptions<T> = {
   model: ModelId;
-  purpose: "generate" | "grade";
+  purpose: "generate" | "grade" | "extract";
   sessionId?: string | null;
   /** Static prefix first — it is what DeepSeek's automatic cache matches on. */
   system: string;
@@ -224,6 +224,113 @@ export async function callStructured<T>(opts: CallOptions<T>): Promise<T> {
   });
 
   throw lastError ?? new AiError("DeepSeek call failed", "unknown", false);
+}
+
+type ChatStreamOptions = {
+  sessionId?: string | null;
+  /** Static prefix — the teacher persona. Never interpolate variable content. */
+  system: string;
+  /** Untrusted student text and the question context ride here, never in system. */
+  user: string;
+  signal?: AbortSignal;
+};
+
+/**
+ * A plain streamed chat completion, yielding content deltas as they arrive.
+ *
+ * Unlike callStructured this is not a forced tool call, so it runs on the stable
+ * (non-/beta) endpoint — /beta only matters for strict tool schemas. There is no
+ * mid-stream retry: once bytes are flowing to the user a restart would double
+ * text. A pre-stream 429/5xx retries once, since nothing has been emitted yet.
+ * Cost is recorded from the final usage frame (DeepSeek sends it last when
+ * include_usage is set); if it never arrives we log zeros rather than block.
+ */
+export async function* callChatStream(
+  opts: ChatStreamOptions,
+): AsyncGenerator<string> {
+  if (!env.DEEPSEEK_API_KEY) {
+    throw new AiError("DEEPSEEK_API_KEY is not set", "no_api_key", false);
+  }
+
+  const startedAt = Date.now();
+  let attempts = 0;
+  let stream: Awaited<
+    ReturnType<typeof stable.chat.completions.create>
+  > | null = null;
+
+  // Pre-stream: safe to retry, nothing has been emitted yet.
+  while (stream === null) {
+    attempts++;
+    try {
+      stream = await stable.chat.completions.create(
+        {
+          model: MODELS.flash,
+          messages: [
+            { role: "system", content: opts.system },
+            { role: "user", content: opts.user },
+          ],
+          temperature: 0.6,
+          max_tokens: 500,
+          stream: true,
+          // Ask DeepSeek to append a usage frame on the final chunk.
+          stream_options: { include_usage: true },
+        },
+        { signal: opts.signal },
+      );
+    } catch (error) {
+      const aiError = error instanceof AiError ? error : classify(error);
+      if (aiError.retryable && attempts < 2) {
+        await sleep(BASE_BACKOFF_MS + Math.random() * 250);
+        continue;
+      }
+      recordCall({
+        sessionId: opts.sessionId ?? null,
+        model: MODELS.flash,
+        purpose: "discuss",
+        usage: undefined,
+        latencyMs: Date.now() - startedAt,
+        ok: false,
+        attempts,
+        errorCode: aiError.code,
+      });
+      throw aiError;
+    }
+  }
+
+  let usage: UsageLike;
+  try {
+    for await (const chunk of stream as AsyncIterable<{
+      choices?: { delta?: { content?: string | null } }[];
+      usage?: UsageLike;
+    }>) {
+      if (chunk.usage) usage = chunk.usage;
+      const delta = chunk.choices?.[0]?.delta?.content;
+      if (delta) yield delta;
+    }
+  } catch (error) {
+    // Mid-stream failure: no retry, but still record the attempt for cost/health.
+    recordCall({
+      sessionId: opts.sessionId ?? null,
+      model: MODELS.flash,
+      purpose: "discuss",
+      usage,
+      latencyMs: Date.now() - startedAt,
+      ok: false,
+      attempts,
+      errorCode: (error instanceof AiError ? error : classify(error)).code,
+    });
+    throw error instanceof AiError ? error : classify(error);
+  }
+
+  recordCall({
+    sessionId: opts.sessionId ?? null,
+    model: MODELS.flash,
+    purpose: "discuss",
+    usage,
+    latencyMs: Date.now() - startedAt,
+    ok: true,
+    attempts,
+  });
 }
 
 type UsageLike =

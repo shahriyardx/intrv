@@ -60,6 +60,14 @@ describe("toClientQuestion", () => {
     expect(out.answerKey).toBeNull();
   });
 
+  it("exposes difficulty regardless of grading — it is not a secret", () => {
+    const withRung = { ...mcqRow, difficulty: "HARD" as const };
+    expect(toClientQuestion(withRung, false).difficulty).toBe("HARD");
+    expect(toClientQuestion(withRung, true).difficulty).toBe("HARD");
+    // Absent (non-adaptive question) reads as null, never undefined.
+    expect(toClientQuestion(mcqRow, false).difficulty).toBeNull();
+  });
+
   it("converts Decimal-ish scores to numbers", () => {
     const out = toClientQuestion(
       {

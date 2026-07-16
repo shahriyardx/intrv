@@ -20,8 +20,8 @@ const NOT = [
     body: "There is no camera, no microphone, no simulated interviewer reading your body language. It's questions and written answers.",
   },
   {
-    title: "Not a job service",
-    body: "No resume review, no job matching, no recruiter anywhere in the loop. What you do here is between you and the page.",
+    title: "Not a job board",
+    body: "No resume review, no job matching, no application tracking. Your own practice is between you and the page. Teams can screen candidates through organizations, but that's a separate surface — it never touches your personal history.",
   },
   {
     title: "Not a product with a pricing page",
@@ -119,10 +119,11 @@ export default function AboutPage() {
           </p>
           <p>
             Signing in earns its keep only when repetition does: it keeps a
-            history, collects every question you've ever got wrong into one
-            review, and shows which concepts keep costing you marks over months
-            rather than on one bad afternoon. Optional, and everything else
-            works without it.
+            history, brings every question you've got wrong into one review,
+            reschedules the concepts you miss so they come back as fresh
+            questions before you forget them, and maps which ones keep costing
+            you marks over months rather than on one bad afternoon. Optional,
+            and everything else works without it.
           </p>
         </Prose>
       </section>

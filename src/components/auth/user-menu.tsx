@@ -1,10 +1,12 @@
 "use client";
 
 import {
+  BuildingsIcon,
   ShieldCheckIcon,
   SignOutIcon,
   SquaresFourIcon,
 } from "@phosphor-icons/react";
+import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -119,6 +121,15 @@ export function UserMenu({
           <Link href="/dashboard">
             <SquaresFourIcon className="size-4" />
             Dashboard
+          </Link>
+        </DropdownMenuItem>
+
+        {/* Shown to every signed-in user: organizations are self-serve, so the
+            link is not a disclosure the way /admin is. */}
+        <DropdownMenuItem asChild>
+          <Link href={"/org" as Route}>
+            <BuildingsIcon className="size-4" />
+            Organizations
           </Link>
         </DropdownMenuItem>
 

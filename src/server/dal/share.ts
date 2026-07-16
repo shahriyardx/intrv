@@ -4,6 +4,15 @@ import { clientQuestionSelect, toClientQuestion } from "@/server/dal/dto";
 import type { SessionDetail } from "@/server/dal/interview";
 
 /**
+ * A shared result plus, when it is honest to show one, the taker's name. The
+ * name is present ONLY for a signed-in owner who is on the public leaderboard
+ * and not banned — for an anonymous, opted-out, or banned taker it is null and
+ * the badge simply omits it. Sharing a result must never out someone who chose
+ * not to be named.
+ */
+export type SharedSession = SessionDetail & { takerName: string | null };
+
+/**
  * Loads a shared result by its unguessable share id. Deliberately NOT
  * owner-scoped: the whole point is that anyone with the link can read it. The
  * id is the only credential, which is why it is 96 bits of randomness and why
@@ -12,7 +21,7 @@ import type { SessionDetail } from "@/server/dal/interview";
  */
 export async function getSharedSession(
   shareId: string,
-): Promise<SessionDetail | null> {
+): Promise<SharedSession | null> {
   const session = await prisma.interviewSession.findFirst({
     where: { shareId, status: "GRADED" },
     select: {
@@ -30,6 +39,9 @@ export async function getSharedSession(
       mode: true,
       adaptive: true,
       rematchOfId: true,
+      // Only the fields the privacy test below needs — never enough to identify
+      // an anonymous taker.
+      user: { select: { name: true, banned: true, leaderboardOptOut: true } },
       questions: {
         orderBy: { index: "asc" },
         select: clientQuestionSelect,
@@ -39,7 +51,15 @@ export async function getSharedSession(
 
   if (!session) return null;
 
+  // Name the taker only when they are a real, unbanned, opted-in account.
+  // Anonymous (no user), opted-out, or banned all collapse to null.
+  const takerName =
+    session.user && !session.user.banned && !session.user.leaderboardOptOut
+      ? session.user.name
+      : null;
+
   return {
+    takerName,
     id: session.id,
     topic: session.topic,
     difficulty: session.difficulty,

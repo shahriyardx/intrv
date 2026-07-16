@@ -3,6 +3,7 @@ import type {
   AnswerKey,
   AnswerResponse,
   Choice,
+  Difficulty,
   QuestionType,
 } from "@/lib/schemas";
 import { answerKeySchema } from "@/lib/schemas";
@@ -21,6 +22,13 @@ export type ClientQuestion = {
   type: QuestionType;
   prompt: string;
   choices: Choice[] | null;
+  /**
+   * The rung this question was generated at on an adaptive session, or null when
+   * it inherits the session difficulty. Not a secret — it says nothing about the
+   * answer — so it is sent regardless of grading, and it drives the result
+   * page's calibration line.
+   */
+  difficulty: Difficulty | null;
   /** Present only once graded. */
   explanation: string | null;
   /** Present only once graded. */
@@ -45,6 +53,7 @@ type QuestionRow = {
   prompt: string;
   choices: unknown;
   answerKey: unknown;
+  difficulty?: Difficulty | null;
   explanation: string | null;
   concepts?: string[];
   answer?: {
@@ -74,6 +83,7 @@ export function toClientQuestion(
     type: row.type,
     prompt: row.prompt,
     choices,
+    difficulty: row.difficulty ?? null,
     explanation: revealAnswers ? row.explanation : null,
     answerKey: key?.success ? key.data : null,
     concepts: revealAnswers ? (row.concepts ?? []) : null,
@@ -96,6 +106,7 @@ export const clientQuestionSelect = {
   prompt: true,
   choices: true,
   answerKey: true,
+  difficulty: true,
   explanation: true,
   concepts: true,
   answer: {

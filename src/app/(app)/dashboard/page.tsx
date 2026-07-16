@@ -1,11 +1,14 @@
 import {
   ArrowRightIcon,
   ChartLineUpIcon,
+  ClockCountdownIcon,
+  FlameIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import { formatDistanceToNow } from "date-fns";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { formatScore } from "@/components/analytics/format";
+import { ReviewNowButton } from "@/components/analytics/review-now-button";
 import {
   StatusBadge,
   sessionHref,
@@ -17,6 +20,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { DataLabel, Prose } from "@/components/ui/prose";
 import { getOverviewStats, getWeakConcepts } from "@/server/dal/analytics";
 import { listSessions } from "@/server/dal/interview";
+import { getDueReviewCount, getMomentum } from "@/server/dal/learning";
 import { getViewer } from "@/server/dal/session";
 
 export const metadata: Metadata = { title: "Overview" };
@@ -24,11 +28,15 @@ export const metadata: Metadata = { title: "Overview" };
 export default async function DashboardPage() {
   const viewer = await getViewer();
 
-  const [stats, weakConcepts, recent] = await Promise.all([
-    getOverviewStats(viewer),
-    getWeakConcepts(viewer, { limit: 5 }),
-    listSessions(viewer, { limit: 5 }),
-  ]);
+  const [stats, weakConcepts, recent, momentum, dueReviews] = await Promise.all(
+    [
+      getOverviewStats(viewer),
+      getWeakConcepts(viewer, { limit: 5 }),
+      listSessions(viewer, { limit: 5 }),
+      getMomentum(viewer),
+      getDueReviewCount(viewer),
+    ],
+  );
 
   if (stats.totalSessions === 0) {
     return (
@@ -102,6 +110,68 @@ export default async function DashboardPage() {
           }
         />
       </section>
+
+      <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <StatTile
+          label="Current streak"
+          value={
+            <span className="inline-flex items-center gap-1.5">
+              <FlameIcon
+                aria-hidden
+                weight="fill"
+                className="size-5 text-muted-foreground"
+              />
+              {momentum.currentStreak}
+            </span>
+          }
+          note={
+            momentum.currentStreak === 0
+              ? "Grade a session today to start one"
+              : `${momentum.currentStreak === 1 ? "day" : "days"} in a row · best ${momentum.longestStreak}`
+          }
+        />
+        <StatTile
+          label="XP"
+          value={momentum.xp.toLocaleString()}
+          note="Earned across every graded interview"
+        />
+        <StatTile
+          label="Due for review"
+          value={dueReviews}
+          note={
+            dueReviews === 0
+              ? "Nothing due — you're caught up"
+              : `${dueReviews === 1 ? "concept" : "concepts"} waiting`
+          }
+        />
+      </section>
+
+      {dueReviews > 0 ? (
+        <section className="flex flex-wrap items-center justify-between gap-4 border border-border bg-muted/30 p-5">
+          <div className="flex items-start gap-3">
+            <ClockCountdownIcon
+              aria-hidden
+              className="mt-0.5 size-5 shrink-0 text-muted-foreground"
+            />
+            <div>
+              <p className="text-sm font-medium">
+                {dueReviews} concept{dueReviews === 1 ? "" : "s"} due for review
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Fresh questions on the concepts you've missed, on a spaced
+                schedule.{" "}
+                <Link
+                  href="/dashboard/review"
+                  className="underline underline-offset-4 hover:text-foreground"
+                >
+                  See the queue
+                </Link>
+              </p>
+            </div>
+          </div>
+          <ReviewNowButton size="sm" />
+        </section>
+      ) : null}
 
       <div className="grid gap-14 lg:grid-cols-2">
         <section className="space-y-5">

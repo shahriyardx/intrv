@@ -139,11 +139,13 @@ function Stat({ label, value }: { label: string; value: string }) {
 function Card({
   eyebrow,
   headline,
+  byline,
   score,
   stats,
 }: {
   eyebrow: string;
   headline: string;
+  byline?: string | null;
   score: string | null;
   stats: { label: string; value: string }[];
 }) {
@@ -218,6 +220,18 @@ function Card({
         >
           {headline}
         </span>
+        {byline ? (
+          <span
+            style={{
+              fontFamily: MONO,
+              fontSize: 22,
+              marginTop: 14,
+              color: MUTED,
+            }}
+          >
+            {byline}
+          </span>
+        ) : null}
       </div>
 
       <div
@@ -254,8 +268,11 @@ export default async function Image({
 
   const card = session ? (
     <Card
-      eyebrow="Shared result"
+      eyebrow="Verified result · Intrv"
       headline={truncate(session.topic, 52)}
+      byline={
+        session.takerName ? `by ${truncate(session.takerName, 32)}` : null
+      }
       score={formatScore(session.score)}
       stats={[
         { label: "Difficulty", value: session.difficulty.toLowerCase() },

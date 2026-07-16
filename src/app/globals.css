@@ -305,3 +305,56 @@
     break-inside: avoid;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   PDF export — appended by the share/PDF feature (POLISH). Screen is dark-only;
+   paper is the one place light wins. The block above already hides .no-print
+   and whitens the body; this one recolours the *tokens* so every element that
+   reads --foreground / --muted-foreground / --border prints as ink on white
+   instead of the dark-theme values, and adds the two print utilities the
+   share and result views rely on. Additive: it overrides variables inside the
+   print context only and touches none of the rules above.
+--------------------------------------------------------------------------- */
+@media print {
+  /* Dark-only on screen means <html class="dark">, so the overrides have to
+     target .dark to win — plain white paper, near-black ink, grey rules. The
+     grading hues collapse toward ink because an icon + label already name the
+     verdict; colour was only ever reinforcement. */
+  :root,
+  .dark {
+    --background: #ffffff;
+    --foreground: #14120e;
+    --card: #ffffff;
+    --card-foreground: #14120e;
+    --popover: #ffffff;
+    --popover-foreground: #14120e;
+    --primary: #14120e;
+    --primary-foreground: #ffffff;
+    --secondary: #f2f1ee;
+    --secondary-foreground: #14120e;
+    --muted: #f2f1ee;
+    --muted-foreground: #565351;
+    --border: #d7d5d0;
+    --input: #d7d5d0;
+    --ring: #14120e;
+    --correct: #1c6b41;
+    --correct-foreground: #ffffff;
+    --partial: #7a5713;
+    --partial-foreground: #ffffff;
+    --incorrect: #a32b28;
+    --incorrect-foreground: #ffffff;
+  }
+
+  /* Hidden on screen (the element also carries Tailwind's `hidden`); revealed
+     only when printing. Must outrank that display utility. */
+  .print-only {
+    /* biome-ignore lint/complexity/noImportantStyles: print override must win */
+    display: flex !important;
+  }
+
+  /* The verified score card is a semantic block, not an <article>, so the
+     page-break guard above doesn't reach it — keep it whole on one sheet. */
+  .print-card {
+    break-inside: avoid;
+  }
+}

@@ -3,10 +3,12 @@ import {
   MinusCircleIcon,
   XCircleIcon,
 } from "@phosphor-icons/react/dist/ssr";
+import { DiscussPanel } from "@/components/session/discuss-panel";
 import { RichText } from "@/components/session/rich-text";
 import { DataLabel, Prose } from "@/components/ui/prose";
 import type { AnswerKey, AnswerResponse } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
+import { calibratedLevel, rungBreakdown } from "@/server/ai/adaptive";
 import type { ClientQuestion } from "@/server/dal/dto";
 import type { SessionDetail } from "@/server/dal/interview";
 
@@ -79,6 +81,7 @@ export function ResultView({ session }: { session: SessionDetail }) {
           <Prose className="text-muted-foreground">
             <p>{summaryLine(session)}</p>
           </Prose>
+          {session.adaptive ? <Calibration session={session} /> : null}
           {session.error ? (
             <p className="text-partial text-xs">{session.error}</p>
           ) : null}
@@ -114,7 +117,7 @@ export function ResultView({ session }: { session: SessionDetail }) {
           <ol className="space-y-4">
             {missed.map((q) => (
               <li key={q.id}>
-                <MissedCard question={q} />
+                <MissedCard question={q} sessionId={session.id} />
               </li>
             ))}
           </ol>
@@ -154,6 +157,42 @@ export function ResultView({ session }: { session: SessionDetail }) {
   );
 }
 
+/**
+ * Adaptive sessions move the rung under the student as they go, so a single
+ * score hides how hard the questions they answered actually were. This reads the
+ * per-question rungs back out and reports the level they held, plus the raw
+ * per-rung tally so the number is auditable.
+ */
+function Calibration({ session }: { session: SessionDetail }) {
+  const answered = session.questions
+    .filter((q) => q.answer?.score !== null && q.answer?.score !== undefined)
+    .map((q) => ({
+      rung: q.difficulty ?? session.difficulty,
+      correct: verdictOf(q.answer?.score ?? null) === "correct",
+    }));
+
+  const level = calibratedLevel(answered);
+  if (!level) return null;
+
+  const breakdown = rungBreakdown(answered);
+
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 pt-1">
+      <span className="text-sm">
+        Calibrated level{" "}
+        <span className="font-medium">{level.toLowerCase()}</span>
+      </span>
+      {breakdown.length ? (
+        <span className="font-mono text-[0.625rem] text-muted-foreground tabular">
+          {breakdown
+            .map((b) => `${b.rung} ${b.correct}/${b.answered}`)
+            .join(" · ")}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function SectionRule({
   title,
   count,
@@ -177,7 +216,13 @@ function SectionRule({
 }
 
 /** A question worth re-reading: question, both answers, the reason, the tags. */
-function MissedCard({ question }: { question: ClientQuestion }) {
+function MissedCard({
+  question,
+  sessionId,
+}: {
+  question: ClientQuestion;
+  sessionId: string;
+}) {
   const verdict = verdictOf(question.answer?.score ?? null) ?? "incorrect";
   const meta = VERDICT[verdict];
 
@@ -237,6 +282,8 @@ function MissedCard({ question }: { question: ClientQuestion }) {
           ))}
         </p>
       ) : null}
+
+      <DiscussPanel sessionId={sessionId} questionId={question.id} />
     </article>
   );
 }

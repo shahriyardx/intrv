@@ -1,4 +1,8 @@
-import { ArrowRightIcon, TrophyIcon } from "@phosphor-icons/react/dist/ssr";
+import {
+  ArrowRightIcon,
+  LightningIcon,
+  TrophyIcon,
+} from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -38,6 +42,30 @@ export default function LeaderboardPage() {
       <p className="mt-4 font-mono text-[0.6875rem] text-muted-foreground uppercase tracking-[0.12em]">
         score × difficulty (easy ×1 · medium ×1.5 · hard ×2) × questions ÷ 10
       </p>
+
+      {/* Cross-link to the daily challenge — a different board, refreshed every
+          UTC day, that this all-time table complements. */}
+      <Link
+        href="/daily"
+        className="group mt-8 flex items-center gap-4 border p-4 transition-colors hover:border-foreground/40"
+      >
+        <LightningIcon
+          aria-hidden
+          weight="fill"
+          className="size-5 shrink-0 text-accent"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-lg">Today's challenge</p>
+          <p className="text-muted-foreground text-sm">
+            One shared ten-question set, the same for everyone, with its own
+            daily board. Fastest correct run wins.
+          </p>
+        </div>
+        <ArrowRightIcon
+          aria-hidden
+          className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+        />
+      </Link>
 
       {/* Reads the session and the whole board — the shell above stays static. */}
       <Suspense fallback={<BoardSkeleton />}>

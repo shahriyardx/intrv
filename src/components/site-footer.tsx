@@ -14,6 +14,7 @@ const GROUPS: {
     title: "Product",
     links: [
       { href: "/start", label: "Start an interview" },
+      { href: "/daily", label: "Daily challenge" },
       { href: "/leaderboard", label: "Leaderboard" },
       { href: "/dashboard", label: "Dashboard" },
     ],
