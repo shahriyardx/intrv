@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="InterviewAI">
+  <title>InterviewAI</title>
+  <!--
+    A serif lowercase "i". The tittle is the acid dot that already closes the
+    wordmark in the header, so the mark and the logotype share their one accent.
+
+    Drawn as plain geometry rather than set in Newsreader: a favicon is rasterised
+    at 16px by a browser that has never loaded our webfont, so a text element
+    would fall back to whatever serif the OS has and the mark would differ per
+    platform. Colours are the computed sRGB of the --accent / --background /
+    --foreground tokens in globals.css.
+  -->
+  <rect width="64" height="64" rx="4" fill="#0f0d09" />
+  <circle cx="32" cy="16" r="6" fill="#d4ee40" />
+  <path fill="#fbfaf7" d="M22 28h14v21h9v5H19v-5h9V33h-6z" />
+</svg>

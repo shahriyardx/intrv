@@ -22,28 +22,35 @@ export function DashboardNav() {
   const segment = useSelectedLayoutSegment();
 
   return (
-    <nav className="no-print -mb-px flex gap-1 overflow-x-auto border-b">
-      {LINKS.map((link) => {
-        const active = link.segment === segment;
+    // The rule lives on the wrapper and the scroller is pulled down onto it, so
+    // an active tab's 2px underline covers the 1px rule. Putting the rule on the
+    // scroller instead left its children overflowing it by exactly that 1px,
+    // and overflow-x-auto coerces the other axis to auto — which drew a stray
+    // vertical scrollbar over the page.
+    <div className="no-print border-b">
+      <nav className="-mb-px flex gap-1 overflow-x-auto">
+        {LINKS.map((link) => {
+          const active = link.segment === segment;
 
-        return (
-          <Link
-            key={link.href}
-            href={link.href}
-            // aria-current is the accessible half of "active"; the underline is
-            // the visible half. Neither stands alone.
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "-mb-px whitespace-nowrap border-b-2 px-3 py-2.5 text-sm transition-colors",
-              active
-                ? "border-foreground font-medium text-foreground"
-                : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
-            )}
-          >
-            {link.label}
-          </Link>
-        );
-      })}
-    </nav>
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              // aria-current is the accessible half of "active"; the underline
+              // is the visible half. Neither stands alone.
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "whitespace-nowrap border-b-2 px-3 py-2.5 text-sm transition-colors",
+                active
+                  ? "border-foreground font-medium text-foreground"
+                  : "border-transparent text-muted-foreground hover:border-border hover:text-foreground",
+              )}
+            >
+              {link.label}
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
   );
 }
