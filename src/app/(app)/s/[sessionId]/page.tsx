@@ -76,6 +76,7 @@ export default async function SessionPage(props: {
             expiresAt={
               session.expiresAt ? session.expiresAt.toISOString() : null
             }
+            trackIntegrity={session.mode === "SCREEN"}
           />
         </Suspense>
       </main>

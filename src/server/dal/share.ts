@@ -27,6 +27,9 @@ export async function getSharedSession(
       createdAt: true,
       shareId: true,
       error: true,
+      mode: true,
+      adaptive: true,
+      rematchOfId: true,
       questions: {
         orderBy: { index: "asc" },
         select: clientQuestionSelect,
@@ -48,6 +51,9 @@ export async function getSharedSession(
     createdAt: session.createdAt,
     shareId: session.shareId,
     error: session.error,
+    mode: session.mode,
+    adaptive: session.adaptive,
+    rematchOfId: session.rematchOfId,
     // Graded, so the answers are already public knowledge to the taker.
     questions: session.questions.map((q) => toClientQuestion(q, true)),
   };

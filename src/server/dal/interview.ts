@@ -27,6 +27,15 @@ export type SessionSummary = {
   shareId: string | null;
   /** User-facing note when something degraded: failed generation, partial grading. */
   error: string | null;
+  mode:
+    | "CUSTOM"
+    | "JOB_DESCRIPTION"
+    | "DAILY"
+    | "REVIEW"
+    | "REMATCH"
+    | "SCREEN";
+  adaptive: boolean;
+  rematchOfId: string | null;
 };
 
 export type SessionDetail = SessionSummary & {
@@ -46,6 +55,9 @@ const sessionSelect = {
   createdAt: true,
   shareId: true,
   error: true,
+  mode: true,
+  adaptive: true,
+  rematchOfId: true,
 } as const;
 
 /**
@@ -87,6 +99,9 @@ export async function getAccessibleSession(
     createdAt: session.createdAt,
     shareId: session.shareId,
     error: session.error,
+    mode: session.mode,
+    adaptive: session.adaptive,
+    rematchOfId: session.rematchOfId,
     questions: session.questions.map((q) => toClientQuestion(q, revealAnswers)),
   };
 }
