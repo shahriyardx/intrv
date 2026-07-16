@@ -44,6 +44,10 @@ export function SignInForm({
   next?: string;
   googleEnabled: boolean;
 }) {
+  // react-hook-form v7 tracks formState via a Proxy; the React Compiler
+  // (reactCompiler: true) optimizes those accesses away, so error/isSubmitting
+  // changes never re-render. Opt this component out until RHF v8.
+  "use no memo";
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
   const [googlePending, setGooglePending] = useState(false);

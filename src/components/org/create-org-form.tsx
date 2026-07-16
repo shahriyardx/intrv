@@ -28,6 +28,8 @@ type Values = z.infer<typeof schema>;
  * here to report a server-side error (e.g. the 3-org cap).
  */
 export function CreateOrgForm() {
+  // reactCompiler breaks RHF v7's formState Proxy subscription — opt out.
+  "use no memo";
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: { name: "" },

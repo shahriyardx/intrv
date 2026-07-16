@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SpinnerGapIcon } from "@phosphor-icons/react";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import {
   FormProvider,
   useForm,
@@ -158,17 +158,25 @@ export function Configurator() {
 }
 
 function TopicForm() {
+  // reactCompiler breaks RHF v7's formState/watch Proxy subscription — opt out.
+  "use no memo";
   const form = useForm<z.input<typeof topicFormSchema>>({
     resolver: zodResolver(topicFormSchema),
     defaultValues: { topic: "", difficulty: "MEDIUM", ...SHARED_DEFAULTS },
   });
   const [serverError, setServerError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // A stable ref, not the submit event's currentTarget: react-hook-form awaits
+  // async validation before calling this, by which point React has nulled the
+  // event's currentTarget. The ref reads live values (registered inputs,
+  // checkboxes as arrays, adaptive as "on") exactly like a native submit.
+  const formRef = useRef<HTMLFormElement>(null);
 
   const topic = form.watch("topic");
 
-  const onSubmit = form.handleSubmit((_values, event) => {
-    const data = new FormData(event?.currentTarget as HTMLFormElement);
+  const onSubmit = form.handleSubmit(() => {
+    if (!formRef.current) return;
+    const data = new FormData(formRef.current);
     setServerError(null);
     startTransition(async () => {
       const result = await createInterviewSession(null, data);
@@ -178,7 +186,7 @@ function TopicForm() {
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={onSubmit} noValidate className="space-y-10">
+      <form ref={formRef} onSubmit={onSubmit} noValidate className="space-y-10">
         <Field label="Topic" hint="Anything you want to be tested on.">
           <Input
             maxLength={120}
@@ -275,17 +283,21 @@ function TopicForm() {
 }
 
 function JdForm() {
+  // reactCompiler breaks RHF v7's formState/watch Proxy subscription — opt out.
+  "use no memo";
   const form = useForm<z.input<typeof jdFormSchema>>({
     resolver: zodResolver(jdFormSchema),
     defaultValues: { jd: "", ...SHARED_DEFAULTS },
   });
   const [serverError, setServerError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const formRef = useRef<HTMLFormElement>(null);
 
   const len = (form.watch("jd") ?? "").length;
 
-  const onSubmit = form.handleSubmit((_values, event) => {
-    const data = new FormData(event?.currentTarget as HTMLFormElement);
+  const onSubmit = form.handleSubmit(() => {
+    if (!formRef.current) return;
+    const data = new FormData(formRef.current);
     setServerError(null);
     startTransition(async () => {
       const result = await createJdSession(null, data);
@@ -295,7 +307,7 @@ function JdForm() {
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={onSubmit} noValidate className="space-y-10">
+      <form ref={formRef} onSubmit={onSubmit} noValidate className="space-y-10">
         <Field
           label="Job description"
           hint="Paste the posting — responsibilities and requirements."
@@ -348,6 +360,8 @@ function JdForm() {
 }
 
 function TypesField() {
+  // reactCompiler breaks RHF v7's formState Proxy subscription — opt out.
+  "use no memo";
   const { register, formState } = useFormContext();
   return (
     <Field label="Question types" hint="Pick at least one.">
@@ -372,6 +386,8 @@ function TypesField() {
 }
 
 function CountField() {
+  // reactCompiler breaks RHF v7's watch subscription — opt out.
+  "use no memo";
   const { register } = useFormContext();
   const count = Number(useWatch({ name: "questionCount" }) ?? "10");
 

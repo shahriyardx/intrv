@@ -251,6 +251,15 @@ non-streaming calls stay on `httpBatchLink`.
   inside `FieldLabel` to keep the mono look; the action-level error line stays
   for server-only failures (slug collisions, AI failures). Single-button action
   forms stay native `<form action={…}>`.
+- **RHF v7 + `reactCompiler: true` needs `"use no memo"`.** react-hook-form
+  tracks `formState`/`watch` through a Proxy; the React Compiler optimizes those
+  accesses away, so error and `isSubmitting` changes never re-render and field
+  errors silently never show. Every component that calls `useForm`/
+  `useFormContext` and reads `formState`/`watch` opens with the `"use no memo"`
+  directive. Remove it when RHF v8 (compiler-aware) lands. Also: RHF's
+  `handleSubmit` awaits async validation before your handler runs, by which
+  point React has nulled the submit event's `currentTarget` — build FormData
+  from a stable `useRef` on the `<form>`, never `event.currentTarget`.
 - Server Functions are POST endpoints reachable directly, so **every action
   re-establishes its viewer and re-checks access** rather than trusting the UI
   that called it.

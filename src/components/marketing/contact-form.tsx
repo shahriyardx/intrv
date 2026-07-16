@@ -6,7 +6,7 @@ import {
   SpinnerGapIcon,
   WarningIcon,
 } from "@phosphor-icons/react";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,8 @@ const schema = z.object({
 type Values = z.infer<typeof schema>;
 
 export function ContactForm({ token }: { token: string }) {
+  // reactCompiler breaks RHF v7's formState Proxy subscription — opt out.
+  "use no memo";
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: { name: "", email: "", subject: "", body: "" },
@@ -66,11 +68,14 @@ export function ContactForm({ token }: { token: string }) {
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const { errors } = form.formState;
+  // A stable ref, not the submit event's currentTarget: RHF awaits async
+  // validation before calling this, by which point React has nulled the event's
+  // currentTarget. The ref still carries the honeypot and the hidden token.
+  const formRef = useRef<HTMLFormElement>(null);
 
-  const onSubmit = form.handleSubmit((_values, event) => {
-    // Native FormData off the form element, so the honeypot (company) and the
-    // hidden token ride along untouched. The action re-validates everything.
-    const data = new FormData(event?.currentTarget as HTMLFormElement);
+  const onSubmit = form.handleSubmit(() => {
+    if (!formRef.current) return;
+    const data = new FormData(formRef.current);
     setFormError(null);
     startTransition(async () => {
       const result = await sendContactMessage(INITIAL, data);
@@ -94,7 +99,7 @@ export function ContactForm({ token }: { token: string }) {
   const bodyLength = form.watch("body")?.length ?? 0;
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-5">
+    <form ref={formRef} onSubmit={onSubmit} noValidate className="space-y-5">
       {/* The signed stamp of when this form was served. The action refuses a
           submission that beats a human to it, or one carrying no stamp. */}
       <input type="hidden" name="token" value={token} />

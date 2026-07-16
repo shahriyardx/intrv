@@ -48,6 +48,9 @@ export function SignUpForm({
   next?: string;
   googleEnabled: boolean;
 }) {
+  // reactCompiler optimizes away RHF v7's formState Proxy access-tracking, so
+  // error/isSubmitting changes wouldn't re-render. Opt out until RHF v8.
+  "use no memo";
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
   const [googlePending, setGooglePending] = useState(false);

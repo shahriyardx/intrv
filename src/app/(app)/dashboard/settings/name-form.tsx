@@ -22,6 +22,8 @@ const schema = z.object({
 type Values = z.infer<typeof schema>;
 
 export function NameForm({ name }: { name: string }) {
+  // reactCompiler breaks RHF v7's formState Proxy subscription — opt out.
+  "use no memo";
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: { name },

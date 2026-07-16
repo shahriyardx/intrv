@@ -2,7 +2,13 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { WarningIcon } from "@phosphor-icons/react";
-import { useActionState, useEffect, useState, useTransition } from "react";
+import {
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -52,6 +58,8 @@ type Values = z.infer<typeof schema>;
  * offers or hides is only about not proposing a move that will be refused.
  */
 export function PostEditor({ post }: { post?: Post }) {
+  // reactCompiler breaks RHF v7's formState Proxy subscription — opt out.
+  "use no memo";
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -64,6 +72,12 @@ export function PostEditor({ post }: { post?: Post }) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [preview, setPreview] = useState(false);
+  // A stable ref, not the submit event's currentTarget: RHF awaits async
+  // validation first, by which point React has nulled currentTarget. The clicked
+  // submit button's intent is captured on its onClick, since a ref-built
+  // FormData carries no submitter.
+  const formRef = useRef<HTMLFormElement>(null);
+  const intentRef = useRef<string>("publish");
 
   /**
    * The slug tracks the title only until the author takes it over — and never
@@ -80,14 +94,12 @@ export function PostEditor({ post }: { post?: Post }) {
   const published = post?.status === "PUBLISHED";
   const slugMoved = published && slug !== post.slug;
 
-  const onSubmit = form.handleSubmit((_values, event) => {
-    // Native FormData with the submitter, so the clicked button's
-    // name="intent" value and the hidden id ride along.
-    const nativeEvent = event?.nativeEvent as SubmitEvent | undefined;
-    const data = new FormData(
-      event?.currentTarget as HTMLFormElement,
-      nativeEvent?.submitter,
-    );
+  const onSubmit = form.handleSubmit(() => {
+    if (!formRef.current) return;
+    // The hidden id rides along in the form; the intent comes from whichever
+    // button was clicked (captured in intentRef on its onClick).
+    const data = new FormData(formRef.current);
+    data.set("intent", intentRef.current);
     setServerError(null);
     startTransition(async () => {
       const result = await savePostAction(null, data);
@@ -102,7 +114,7 @@ export function PostEditor({ post }: { post?: Post }) {
 
   return (
     <div className="space-y-6">
-      <form onSubmit={onSubmit} noValidate className="space-y-6">
+      <form ref={formRef} onSubmit={onSubmit} noValidate className="space-y-6">
         {post ? <input type="hidden" name="id" value={post.id} /> : null}
 
         <div className="grid gap-6 md:grid-cols-2">
@@ -250,10 +262,11 @@ export function PostEditor({ post }: { post?: Post }) {
         <div className="flex flex-wrap items-center gap-2 border-t pt-5">
           <Button
             type="submit"
-            name="intent"
-            value="draft"
             variant="outline"
             disabled={pending}
+            onClick={() => {
+              intentRef.current = "draft";
+            }}
           >
             Save draft
           </Button>
@@ -262,9 +275,10 @@ export function PostEditor({ post }: { post?: Post }) {
               and for an already-live post that reads as saving changes. */}
           <Button
             type="submit"
-            name="intent"
-            value="publish"
             disabled={pending}
+            onClick={() => {
+              intentRef.current = "publish";
+            }}
           >
             {published ? "Save changes" : "Publish"}
           </Button>
@@ -272,10 +286,11 @@ export function PostEditor({ post }: { post?: Post }) {
           {published ? (
             <Button
               type="submit"
-              name="intent"
-              value="unpublish"
               variant="ghost"
               disabled={pending}
+              onClick={() => {
+                intentRef.current = "unpublish";
+              }}
             >
               Unpublish
             </Button>

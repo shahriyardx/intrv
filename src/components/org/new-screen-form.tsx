@@ -66,6 +66,8 @@ type Values = z.infer<typeof schema>;
  * report an error.
  */
 export function NewScreenForm({ orgId }: { orgId: string }) {
+  // reactCompiler breaks RHF v7's formState Proxy subscription — opt out.
+  "use no memo";
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: {
