@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { getAccountProfile, getOverviewStats } from "@/server/dal/analytics";
 import { getViewer } from "@/server/dal/session";
 import { DeleteAccount } from "./delete-account";
+import { LeaderboardToggle } from "./leaderboard-toggle";
 import { NameForm } from "./name-form";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -42,6 +43,13 @@ export default async function SettingsPage() {
             no field.
           </p>
         </Prose>
+      </section>
+
+      <Separator />
+
+      <section className="space-y-4">
+        <DataLabel>Privacy</DataLabel>
+        <LeaderboardToggle optedOut={profile.leaderboardOptOut} />
       </section>
 
       <Separator />

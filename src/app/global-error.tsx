@@ -32,14 +32,12 @@ export default function GlobalError({
       <body className="flex min-h-full flex-col bg-background text-foreground font-sans">
         {/* metadata exports don't work in an error boundary; React renders the
             title tag instead. */}
-        <title>Something went wrong · InterviewAI</title>
+        <title>Something went wrong · Intrv</title>
         <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 py-24 text-center">
           <span className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-muted-foreground">
             Error
           </span>
-          <h1 className="mt-3 font-display text-display-lg">
-            InterviewAI crashed
-          </h1>
+          <h1 className="mt-3 font-display text-display-lg">Intrv crashed</h1>
           <p className="mt-3 max-w-md text-sm text-muted-foreground">
             Not your fault, and nothing you answered was lost. Reload and you
             should land back where you were.

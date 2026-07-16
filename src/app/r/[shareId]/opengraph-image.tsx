@@ -3,7 +3,7 @@ import { ImageResponse } from "next/og";
 import { connection } from "next/server";
 import { getSharedSession } from "@/server/dal/share";
 
-export const alt = "An InterviewAI result";
+export const alt = "An Intrv result";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -42,7 +42,7 @@ async function loadFont(family: string, weight: 500 | 600) {
       `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@${weight}`,
       // The API serves woff2 to browsers; Satori only reads ttf/otf, which is
       // what an unrecognised agent gets.
-      { headers: { "user-agent": "InterviewAI-og" } },
+      { headers: { "user-agent": "Intrv-og" } },
     ).then((res) => res.text());
 
     const url = css.match(/src: url\((.+?)\) format\('truetype'\)/)?.[1];
@@ -95,7 +95,7 @@ function Wordmark() {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       <span style={{ fontFamily: DISPLAY, fontSize: 30, color: INK }}>
-        InterviewAI
+        Intrv
       </span>
       <span
         style={{

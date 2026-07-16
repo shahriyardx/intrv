@@ -33,9 +33,15 @@ model User {
   banReason  String?
   banExpires DateTime?
 
+  /// The public leaderboard is on by default, so this is an opt-OUT: a user who
+  /// sets it keeps their name off a page anyone can read. Not a better-auth
+  /// field — it is ours, and better-auth never writes it.
+  leaderboardOptOut Boolean @default(false)
+
   sessions           Session[]
   accounts           Account[]
   interviewSessions  InterviewSession[]
+  posts              Post[]
 
   @@unique([email])
   @@map("user")
@@ -112,10 +118,13 @@ enum QuestionType {
   SHORT_ANSWER
 }
 
+/// Ordered easiest to hardest. The leaderboard weights points by this ladder.
 enum Difficulty {
+  BEGINNER
   EASY
   MEDIUM
   HARD
+  EXPERT
 }
 
 enum SessionStatus {
@@ -230,4 +239,54 @@ model AiCall {
   @@index([createdAt(sort: Desc)])
   @@index([ok])
   @@map("ai_call")
+}
+
+// ---------------------------------------------------------------------------
+// Content
+// ---------------------------------------------------------------------------
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+}
+
+/// A blog post, authored in /admin.
+///
+/// `body` is Markdown, never HTML, and is rendered with raw HTML disabled — a
+/// stored-XSS on a public page is the obvious way for this feature to go wrong.
+model Post {
+  id        String     @id @default(uuid())
+  /// URL segment. Unique because it is the public identity of the post.
+  slug      String     @unique @db.VarChar(120)
+  title     String     @db.VarChar(160)
+  /// Shown in listings and as the meta description.
+  excerpt   String     @db.VarChar(320)
+  body      String
+  status    PostStatus @default(DRAFT)
+  /// Set the first time it is published; keeps its original date on re-publish.
+  publishedAt DateTime? @db.Timestamptz(3)
+  authorId  String?
+  createdAt DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime   @updatedAt @db.Timestamptz(3)
+
+  /// SetNull, not Cascade: deleting the author must not delete the writing.
+  author User? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([status, publishedAt(sort: Desc)])
+  @@map("post")
+}
+
+/// A message from the contact form. Read in /admin — there is no mail provider.
+model ContactMessage {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(80)
+  email     String   @db.VarChar(160)
+  subject   String   @db.VarChar(160)
+  body      String   @db.VarChar(4000)
+  /// Marked by an admin once dealt with; this is the whole workflow.
+  handled   Boolean  @default(false)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([handled, createdAt(sort: Desc)])
+  @@map("contact_message")
 }

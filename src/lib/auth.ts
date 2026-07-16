@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 import { env, isGoogleOAuthEnabled } from "@/lib/env";
 
 export const auth = betterAuth({
-  appName: "InterviewAI",
+  appName: "Intrv",
   // baseURL is intentionally omitted: better-auth reads BETTER_AUTH_URL itself,
   // and hardcoding localhost here would break every non-local deployment.
   database: prismaAdapter(prisma, { provider: "postgresql" }),

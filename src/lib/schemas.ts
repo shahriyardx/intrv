@@ -5,7 +5,17 @@ import { z } from "zod";
  * configurator form and the server action must validate against the same rules.
  */
 
-export const DIFFICULTIES = ["EASY", "MEDIUM", "HARD"] as const;
+/**
+ * Ordered easiest to hardest. The order is load-bearing: the UI renders the
+ * ladder in this order, and the leaderboard weights points by it.
+ */
+export const DIFFICULTIES = [
+  "BEGINNER",
+  "EASY",
+  "MEDIUM",
+  "HARD",
+  "EXPERT",
+] as const;
 export const QUESTION_TYPES = ["MCQ", "TRUE_FALSE", "SHORT_ANSWER"] as const;
 
 export const difficultySchema = z.enum(DIFFICULTIES);
@@ -14,7 +24,12 @@ export const questionTypeSchema = z.enum(QUESTION_TYPES);
 export type Difficulty = z.infer<typeof difficultySchema>;
 export type QuestionType = z.infer<typeof questionTypeSchema>;
 
-export const QUESTION_COUNTS = [5, 10, 15, 20] as const;
+/**
+ * Generation batches three questions per model call, so a 50-question set is
+ * ~17 calls. They stream in and you answer from the first one, but the tail
+ * takes a couple of minutes — the UI says so rather than pretending otherwise.
+ */
+export const QUESTION_COUNTS = [5, 10, 15, 20, 30, 40, 50] as const;
 
 /**
  * The topic is untrusted text that ends up near a model prompt. Length and

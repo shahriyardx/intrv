@@ -116,14 +116,34 @@ export type NormalizedQuestion = {
  * null rather than throwing lets one bad question be dropped without losing the
  * whole batch — the generator tops up to the requested count.
  */
+/**
+ * "What does the following code print?" — with no code in the prompt.
+ *
+ * Observed in the wild: the model writes the stem and drops the snippet, and
+ * the reader gets a question that cannot be answered. The prompt field is the
+ * only thing they see, so if it promises code it has to contain code.
+ */
+const REFERS_TO_CODE =
+  /\b(?:following|this|the below|below)\s+(?:javascript\s+|js\s+|python\s+|sql\s+|css\s+|html\s+|typescript\s+|ts\s+)?(?:code|snippet|function|program|script|component|query)\b/i;
+
+function promisesCodeButHasNone(prompt: string): boolean {
+  return REFERS_TO_CODE.test(prompt) && !prompt.includes("```");
+}
+
 export function normalizeQuestion(q: WireQuestion): NormalizedQuestion | null {
+  const prompt = q.prompt.trim();
+
+  // Dropping it costs one question; the generator tops the set back up. Showing
+  // it costs the reader's trust in every other question on the page.
+  if (promisesCodeButHasNone(prompt)) return null;
+
   const concepts = q.concepts
     .map((c) => c.trim().toLowerCase())
     .filter(Boolean)
     .slice(0, 3);
 
   const base = {
-    prompt: q.prompt.trim(),
+    prompt,
     explanation: q.explanation.trim(),
     concepts,
   };

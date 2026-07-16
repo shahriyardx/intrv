@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ---------------------------------------------------------------------------
-   InterviewAI design system — "editorial technical"
+   Intrv design system — "editorial technical"
 
    Warm paper + near-black ink, an editorial serif for display, a sans for
    reading, and mono for anything that is data. One acid accent, used scarcely:
@@ -58,6 +58,13 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+
+  /* Syntax highlighting. Decorative only: code is legible with none of it. */
+  --color-syn-keyword: var(--syn-keyword);
+  --color-syn-string: var(--syn-string);
+  --color-syn-comment: var(--syn-comment);
+  --color-syn-number: var(--syn-number);
+  --color-syn-fn: var(--syn-fn);
 
   /* Grading states. Always paired with an icon + label — never color alone. */
   --color-correct: var(--correct);
@@ -141,6 +148,14 @@
   --input: oklch(0.88 0.006 90);
   --ring: oklch(0.16 0.008 75);
 
+  /* Syntax. Stepped darker than the chart ramp: these are body-size text on
+     paper, not 8px-wide marks, so they need text contrast rather than 3:1. */
+  --syn-keyword: oklch(0.45 0.19 295);
+  --syn-string: oklch(0.42 0.12 150);
+  --syn-comment: oklch(0.58 0.01 75);
+  --syn-number: oklch(0.48 0.15 45);
+  --syn-fn: oklch(0.45 0.16 255);
+
   --correct: oklch(0.52 0.14 150);
   --correct-foreground: oklch(0.985 0.004 95);
   --correct-muted: oklch(0.95 0.04 150);
@@ -201,6 +216,13 @@
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
   --ring: oklch(0.88 0.19 118);
+
+  /* Syntax, stepped for the dark surface — a selected set, not a flip. */
+  --syn-keyword: oklch(0.78 0.14 295);
+  --syn-string: oklch(0.78 0.13 150);
+  --syn-comment: oklch(0.6 0.01 95);
+  --syn-number: oklch(0.8 0.13 60);
+  --syn-fn: oklch(0.78 0.12 245);
 
   --correct: oklch(0.7 0.16 150);
   --correct-foreground: oklch(0.16 0.004 95);

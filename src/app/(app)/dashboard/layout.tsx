@@ -8,7 +8,7 @@ import { getViewer } from "@/server/dal/session";
 import { DashboardNav } from "./nav";
 
 export const metadata: Metadata = {
-  title: { default: "Dashboard", template: "%s · Dashboard · InterviewAI" },
+  title: { default: "Dashboard", template: "%s · Dashboard · Intrv" },
   // A personal history is not something to hand a crawler.
   robots: { index: false },
 };

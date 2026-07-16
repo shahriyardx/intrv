@@ -1,7 +1,7 @@
 "use client";
 
 import { SpinnerGapIcon } from "@phosphor-icons/react";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,9 +23,11 @@ const TYPE_LABELS: Record<QuestionType, string> = {
 };
 
 const DIFFICULTY_HINTS: Record<Difficulty, string> = {
+  BEGINNER: "First day with it",
   EASY: "Just read an intro",
   MEDIUM: "Know the pitfalls",
   HARD: "Reason about trade-offs",
+  EXPERT: "Shipped it in production",
 };
 
 const TIME_OPTIONS = [
@@ -36,12 +38,51 @@ const TIME_OPTIONS = [
   { label: "45 min", value: "45" },
 ];
 
-const SUGGESTIONS = [
-  "React hooks",
-  "SQL indexing",
-  "Distributed systems",
-  "Cell biology",
-  "Behavioural interview",
+/**
+ * Presets, not a taxonomy: the topic is free text and always will be. These
+ * exist because a blank field is the hardest thing to answer, and because the
+ * model writes sharper questions for a topic it has seen a thousand times.
+ */
+const PRESETS: { group: string; topics: string[] }[] = [
+  {
+    group: "Frontend",
+    topics: [
+      "HTML",
+      "CSS",
+      "JavaScript",
+      "TypeScript",
+      "React",
+      "Next.js",
+      "Tailwind CSS",
+      "Web accessibility",
+    ],
+  },
+  {
+    group: "Backend",
+    topics: [
+      "Node.js",
+      "REST API design",
+      "SQL",
+      "PostgreSQL",
+      "MongoDB",
+      "Redis",
+      "Authentication",
+      "System design",
+    ],
+  },
+  {
+    group: "Foundations",
+    topics: [
+      "Data structures",
+      "Algorithms",
+      "Git",
+      "Docker",
+      "Testing",
+      "Python",
+      "Networking & HTTP",
+      "Behavioural interview",
+    ],
+  },
 ];
 
 export function Configurator() {
@@ -49,6 +90,10 @@ export function Configurator() {
     createInterviewSession,
     null,
   );
+  // Controlled so a preset can fill the field and light up as chosen. The field
+  // stays free text: the presets are a shortcut, not the menu.
+  const [topic, setTopic] = useState("");
+  const [count, setCount] = useState<number>(10);
 
   return (
     <form action={formAction} className="space-y-10">
@@ -58,24 +103,42 @@ export function Configurator() {
           required
           maxLength={120}
           autoFocus
+          value={topic}
+          onChange={(e) => setTopic(e.target.value)}
           placeholder="e.g. React hooks, photosynthesis, system design"
           className="h-12 text-base"
         />
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {SUGGESTIONS.map((s) => (
-            <button
-              key={s}
-              type="button"
-              className="rounded-full border px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
-              onClick={(e) => {
-                const input = e.currentTarget
-                  .closest("form")
-                  ?.querySelector<HTMLInputElement>('input[name="topic"]');
-                if (input) input.value = s;
-              }}
-            >
-              {s}
-            </button>
+        {/* Groups are labelled on their own line: inline labels collided with
+            the first chip, and the pill shape fought every other control on
+            this form. Same sharp rectangles as the rest of it. */}
+        <div className="mt-5 space-y-4">
+          {PRESETS.map((preset) => (
+            <div key={preset.group}>
+              <span className="block font-mono text-[0.625rem] text-muted-foreground uppercase tracking-[0.12em]">
+                {preset.group}
+              </span>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {preset.topics.map((t) => {
+                  const selected = topic === t;
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => setTopic(t)}
+                      className={cn(
+                        "rounded-sm border px-2.5 py-1.5 text-xs transition-colors",
+                        selected
+                          ? "border-foreground bg-secondary text-foreground"
+                          : "border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground",
+                      )}
+                    >
+                      {t}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           ))}
         </div>
       </Field>
@@ -102,13 +165,13 @@ export function Configurator() {
       <div className="grid gap-10 sm:grid-cols-2">
         <Field label="Difficulty">
           <div className="grid gap-2">
-            {DIFFICULTIES.map((d, i) => (
+            {DIFFICULTIES.map((d) => (
               <label key={d} className="cursor-pointer">
                 <input
                   type="radio"
                   name="difficulty"
                   value={d}
-                  defaultChecked={i === 1}
+                  defaultChecked={d === "MEDIUM"}
                   className="peer sr-only"
                 />
                 <div className="flex items-baseline justify-between rounded-md border px-3 py-2 text-sm transition-colors peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
@@ -124,14 +187,15 @@ export function Configurator() {
 
         <div className="space-y-10">
           <Field label="Questions">
-            <div className="flex gap-2">
-              {QUESTION_COUNTS.map((n, i) => (
-                <label key={n} className="flex-1 cursor-pointer">
+            <div className="grid grid-cols-4 gap-2">
+              {QUESTION_COUNTS.map((n) => (
+                <label key={n} className="cursor-pointer">
                   <input
                     type="radio"
                     name="questionCount"
                     value={n}
-                    defaultChecked={i === 1}
+                    defaultChecked={n === 10}
+                    onChange={() => setCount(n)}
                     className="peer sr-only"
                   />
                   <div className="rounded-md border py-2 text-center font-mono text-sm tabular transition-colors peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
@@ -140,6 +204,14 @@ export function Configurator() {
                 </label>
               ))}
             </div>
+            {count >= 30 ? (
+              // Three questions per model call, so a long set keeps arriving for
+              // a couple of minutes. Better to say so than to look stuck.
+              <p className="mt-2 text-muted-foreground text-xs">
+                {count} questions take a few minutes to finish writing. You can
+                start on the first ones straight away.
+              </p>
+            ) : null}
           </Field>
 
           <Field label="Time limit">

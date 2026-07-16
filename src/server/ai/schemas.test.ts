@@ -33,6 +33,68 @@ describe("emitQuestionsSchema — tolerating DeepSeek strict mode", () => {
   });
 });
 
+describe("normalizeQuestion — code questions must contain their code", () => {
+  const mcq = {
+    explanation: "why",
+    concepts: ["a"],
+    keyPoints: [],
+    type: "MCQ" as const,
+    choices: [
+      { key: "A", text: "1" },
+      { key: "B", text: "2" },
+    ],
+    answerKey: "A",
+  };
+
+  it("drops a question that promises code and has none", () => {
+    // Observed from the live model: the stem arrives without the snippet, and
+    // the reader gets something unanswerable.
+    expect(
+      normalizeQuestion({
+        ...mcq,
+        prompt: "What does the following code print?",
+      }),
+    ).toBeNull();
+    expect(
+      normalizeQuestion({
+        ...mcq,
+        prompt: "What is wrong with this function?",
+      }),
+    ).toBeNull();
+    expect(
+      normalizeQuestion({
+        ...mcq,
+        prompt: "What does this JavaScript snippet output?",
+      }),
+    ).toBeNull();
+  });
+
+  it("keeps it when the code is actually there", () => {
+    expect(
+      normalizeQuestion({
+        ...mcq,
+        prompt:
+          "What does the following code print?\n\n```js\nconsole.log(1)\n```",
+      }),
+    ).not.toBeNull();
+  });
+
+  it("does not drop ordinary prose that happens to say 'code'", () => {
+    expect(
+      normalizeQuestion({
+        ...mcq,
+        prompt: "Why is dead code elimination useful?",
+      }),
+    ).not.toBeNull();
+    expect(
+      normalizeQuestion({
+        ...mcq,
+        prompt: "What does a 404 status code mean?",
+      }),
+    ).not.toBeNull();
+  });
+});
+
 describe("normalizeQuestion", () => {
   const base = { explanation: "why", concepts: ["a"], keyPoints: [] };
 

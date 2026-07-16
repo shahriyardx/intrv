@@ -14,9 +14,7 @@ export default function AuthLayout({
     <>
       <header className="mx-auto flex h-14 w-full max-w-5xl shrink-0 items-center justify-between px-6">
         <Link href="/" className="group flex items-baseline gap-2">
-          <span className="font-display text-lg tracking-tight">
-            InterviewAI
-          </span>
+          <span className="font-display text-lg tracking-tight">Intrv</span>
           <span
             aria-hidden
             className="h-1.5 w-1.5 rounded-full bg-accent transition-transform group-hover:scale-125"

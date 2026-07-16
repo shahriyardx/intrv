@@ -4,7 +4,7 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
-# InterviewAI
+# Intrv
 
 AI-generated quizzes and interviews (MCQ, true/false, short answer). No code
 execution.
@@ -24,6 +24,24 @@ to migrate at sign-up.
 `canAccessSession()` in `src/server/dal/owner.ts` is the one place that decides
 this. `ownerWhere()` is only for *listing* a signed-in user's history and
 returns `null` (never `{}`) for anonymous viewers.
+
+## Admin
+
+- **The first signed-in visitor to `/admin` claims it** (`getAdminViewer()` in
+  `src/server/dal/admin.ts`), so a fresh install needs no hand-edited row. The
+  claim runs under a Postgres advisory lock — under READ COMMITTED two
+  simultaneous claimants would both see zero admins and both win. Once one
+  admin exists it can never fire again. On a public deploy this is a land-grab:
+  claim it immediately, or `bun run db:seed <email>` first.
+- **`getAdminViewer()` claims; `isAdminUser()` does not.** Anything rendering on
+  every page (the header) must use `isAdminUser()`, or it would promote whoever
+  loaded the home page first.
+- Admin role checks read the **database**, not the session cookie cache — that
+  cache answers for 5 minutes, which would let a just-revoked admin keep reading
+  and leave a just-claimed one seeing a 404.
+- Non-admins get `notFound()`, never a 403 that confirms `/admin` exists. Note
+  PPR flushes the shell before `notFound()` runs, so the status is 200 while the
+  body is the 404 page; the body discloses nothing.
 
 ## Stack
 

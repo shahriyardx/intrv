@@ -1,8 +1,7 @@
 import { cacheLife } from "next/cache";
 import { ImageResponse } from "next/og";
 
-export const alt =
-  "InterviewAI — practice interviews that tell you what to fix";
+export const alt = "Intrv — practice interviews that tell you what to fix";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -37,7 +36,7 @@ async function loadFont(family: string, weight: 500 | 600) {
       `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@${weight}`,
       // The API serves woff2 to browsers; Satori only reads ttf/otf, which is
       // what an unrecognised agent gets.
-      { headers: { "user-agent": "InterviewAI-og" } },
+      { headers: { "user-agent": "Intrv-og" } },
     ).then((res) => res.text());
 
     const url = css.match(/src: url\((.+?)\) format\('truetype'\)/)?.[1];
@@ -117,7 +116,7 @@ export default async function Image() {
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontFamily: DISPLAY, fontSize: 30, color: INK }}>
-            InterviewAI
+            Intrv
           </span>
           <span
             style={{

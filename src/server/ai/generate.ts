@@ -31,8 +31,24 @@ export type GenerateInput = {
  */
 const BATCH_SIZE = 3;
 
-/** A batch can come back short or with unusable questions; cap the top-ups. */
-const MAX_PASSES = 6;
+/**
+ * A batch can come back short or with unusable questions, so passes must exceed
+ * the ideal count/BATCH_SIZE — but the cap has to scale with the request. A
+ * fixed cap of 6 silently topped out a 50-question set at 18.
+ */
+function maxPasses(count: number): number {
+  return Math.ceil(count / BATCH_SIZE) + 4;
+}
+
+/**
+ * How many previously-asked questions to show the model.
+ *
+ * The avoid list exists to stop repeats, but it rides in the *variable* half of
+ * the prompt, so every entry is a cache miss paid on every later call. At 50
+ * questions an uncapped list would send the whole set back on each pass. The
+ * most recent ones are what the model is actually liable to restate.
+ */
+const AVOID_WINDOW = 12;
 
 /**
  * Yields questions in batches as DeepSeek produces them.
@@ -50,7 +66,9 @@ export async function* generateQuestionsStream(
   let produced = 0;
   let passes = 0;
 
-  while (produced < input.count && passes < MAX_PASSES) {
+  const passLimit = maxPasses(input.count);
+
+  while (produced < input.count && passes < passLimit) {
     passes++;
     const want = Math.min(BATCH_SIZE, input.count - produced);
 
@@ -64,7 +82,7 @@ export async function* generateQuestionsStream(
         difficulty: input.difficulty,
         types: input.types,
         count: want,
-        avoid: asked.length ? asked : undefined,
+        avoid: asked.length ? asked.slice(-AVOID_WINDOW) : undefined,
       }),
       toolName: "emit_questions",
       toolDescription: "Emit the generated questions.",

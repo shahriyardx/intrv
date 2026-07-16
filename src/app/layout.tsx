@@ -32,8 +32,8 @@ export const metadata: Metadata = {
   // shared link ships a preview card pointing at the sharer's own machine.
   metadataBase: new URL(env.BETTER_AUTH_URL),
   title: {
-    default: "InterviewAI — Practice interviews that teach you something",
-    template: "%s · InterviewAI",
+    default: "Intrv — Practice interviews that teach you something",
+    template: "%s · Intrv",
   },
   description:
     "Generate a quiz or interview on any topic, answer it, and get graded feedback that tells you what to study next. No account required.",

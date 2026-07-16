@@ -1,7 +1,9 @@
 import "server-only";
 import { headers } from "next/headers";
+import { cache } from "react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import type { Difficulty } from "@/lib/schemas";
 import {
   type ClientQuestion,
   clientQuestionSelect,
@@ -38,7 +40,18 @@ async function claimAdminIfUnclaimed(userId: string): Promise<boolean> {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(${ADMIN_CLAIM_LOCK[0]}, ${ADMIN_CLAIM_LOCK[1]})`;
 
     const admins = await tx.user.count({ where: { role: "admin" } });
-    if (admins > 0) return false;
+
+    // Someone already holds the seat — but it may be *this* user, from a claim
+    // that raced this one. The layout and the page of the same request both ask,
+    // and they render concurrently: without this re-read the loser of that race
+    // was told "no" and 404'd the very visitor who had just been promoted.
+    if (admins > 0) {
+      const me = await tx.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+      });
+      return me?.role === "admin";
+    }
 
     await tx.user.update({ where: { id: userId }, data: { role: "admin" } });
     return true;
@@ -55,7 +68,7 @@ async function claimAdminIfUnclaimed(userId: string): Promise<boolean> {
  * still gets a 404 and a just-revoked one keeps reading — neither is acceptable
  * on this surface, and an admin page can afford the query.
  */
-export async function getAdminViewer(): Promise<AdminViewer | null> {
+export const getAdminViewer = cache(async (): Promise<AdminViewer | null> => {
   const viewer = await getViewer();
   if (viewer.kind !== "user") return null;
 
@@ -70,7 +83,7 @@ export async function getAdminViewer(): Promise<AdminViewer | null> {
   return (await claimAdminIfUnclaimed(viewer.userId))
     ? { userId: viewer.userId }
     : null;
-}
+});
 
 /**
  * Read-only role check for gating UI, e.g. whether to render the Admin link.
@@ -270,7 +283,7 @@ export const SESSION_STATUSES: readonly SessionStatus[] = [
 export type AdminSessionRow = {
   id: string;
   topic: string;
-  difficulty: "EASY" | "MEDIUM" | "HARD";
+  difficulty: Difficulty;
   status: SessionStatus;
   /** null means the session was taken signed-out and belongs to nobody. */
   ownerEmail: string | null;

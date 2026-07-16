@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import type { Difficulty } from "@/lib/schemas";
 import {
   type ClientQuestion,
   clientQuestionSelect,
@@ -10,7 +11,7 @@ import { canAccessSession, ownerWhere, type Viewer } from "@/server/dal/owner";
 export type SessionSummary = {
   id: string;
   topic: string;
-  difficulty: "EASY" | "MEDIUM" | "HARD";
+  difficulty: Difficulty;
   status:
     | "GENERATING"
     | "READY"

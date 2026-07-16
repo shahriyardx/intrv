@@ -466,6 +466,8 @@ export type AccountProfile = {
   name: string;
   email: string;
   createdAt: Date;
+  /** Drives the leaderboard toggle: the board is public and on by default. */
+  leaderboardOptOut: boolean;
 };
 
 /** The settings page's own read. Scoped to the viewer, never to a passed-in id. */
@@ -476,7 +478,12 @@ export async function getAccountProfile(
 
   const user = await prisma.user.findUnique({
     where: { id: viewer.userId },
-    select: { name: true, email: true, createdAt: true },
+    select: {
+      name: true,
+      email: true,
+      createdAt: true,
+      leaderboardOptOut: true,
+    },
   });
 
   return user;
