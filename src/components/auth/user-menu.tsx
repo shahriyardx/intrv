@@ -49,15 +49,13 @@ export function UserMenu({
   const [signingOut, setSigningOut] = useState(false);
 
   if (!user) {
+    // One door, not two: the sign-in page already links to sign-up, and the
+    // header's one loud action is New interview — which is the product, and
+    // needs no account anyway.
     return (
-      <>
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/sign-in">Sign in</Link>
-        </Button>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/sign-up">Sign up</Link>
-        </Button>
-      </>
+      <Button asChild variant="outline" size="sm">
+        <Link href="/sign-in">Sign in</Link>
+      </Button>
     );
   }
 
