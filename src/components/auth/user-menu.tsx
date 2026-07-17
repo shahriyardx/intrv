@@ -5,6 +5,7 @@ import {
   ShieldCheckIcon,
   SignOutIcon,
   SquaresFourIcon,
+  TrophyIcon,
 } from "@phosphor-icons/react";
 import type { Route } from "next";
 import Link from "next/link";
@@ -128,12 +129,23 @@ export function UserMenu({
             </Link>
           </DropdownMenuItem>
         ) : (
-          <DropdownMenuItem asChild>
-            <Link href="/dashboard">
-              <SquaresFourIcon className="size-4" />
-              Dashboard
-            </Link>
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard">
+                <SquaresFourIcon className="size-4" />
+                Dashboard
+              </Link>
+            </DropdownMenuItem>
+            {/* Personal accounts only, for the same reason as the surfaces
+                above: an org account's attempts are all mode SCREEN, which
+                leaderboard.ts excludes from points — it could never rank. */}
+            <DropdownMenuItem asChild>
+              <Link href="/leaderboard">
+                <TrophyIcon className="size-4" />
+                Leaderboard
+              </Link>
+            </DropdownMenuItem>
+          </>
         )}
 
         {/* Gated on the role rather than on /admin 404ing: a link rendered to
