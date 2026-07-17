@@ -153,7 +153,9 @@ function Row({ row, isViewer }: { row: LeaderboardRow; isViewer: boolean }) {
     <li
       className={cn(
         "flex items-center gap-4 py-3.5",
-        isViewer && "bg-accent/10 px-3 -mx-3",
+        // Full-width tint, no negative margin: the -mx bleed pushed the
+        // highlight past the ends of the list's hairline rules.
+        isViewer && "bg-accent/10",
       )}
     >
       <span

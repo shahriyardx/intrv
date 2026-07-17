@@ -185,7 +185,8 @@ function StandingRow({ row }: { row: DailyStandingRow }) {
     <li
       className={cn(
         "flex items-center gap-4 py-3.5",
-        row.isViewer && "-mx-3 bg-accent/10 px-3",
+        // Full-width tint, no -mx bleed past the list's hairline rules.
+        row.isViewer && "bg-accent/10",
       )}
     >
       <span
