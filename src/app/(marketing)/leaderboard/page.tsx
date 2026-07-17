@@ -9,6 +9,14 @@ import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Measure } from "@/components/ui/page";
 import { DataLabel, Prose } from "@/components/ui/prose";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import {
   getLeaderboard,
@@ -118,15 +126,20 @@ async function Board() {
 
   return (
     <>
-      <ol className="mt-10 divide-y border-y">
-        {rows.map((row) => (
-          <Row
-            key={row.userId}
-            row={row}
-            isViewer={viewer.kind === "user" && viewer.userId === row.userId}
-          />
-        ))}
-      </ol>
+      <Table className="mt-10">
+        <TableHeader>
+          <HeadRow />
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => (
+            <Row
+              key={row.userId}
+              row={row}
+              isViewer={viewer.kind === "user" && viewer.userId === row.userId}
+            />
+          ))}
+        </TableBody>
+      </Table>
 
       {standing ? (
         <StandingNote standing={standing} shownInTable={shownInTable} />
@@ -146,55 +159,60 @@ async function Board() {
   );
 }
 
+/** Column labels in the house's mono-uppercase style, not the shadcn default. */
+const LABEL =
+  "font-mono text-[0.625rem] uppercase tracking-[0.12em] text-muted-foreground";
+
+function HeadRow() {
+  return (
+    <TableRow className="hover:bg-transparent">
+      <TableHead className={cn(LABEL, "w-12 text-right")}>#</TableHead>
+      <TableHead className={LABEL}>Player</TableHead>
+      <TableHead className={cn(LABEL, "hidden text-right sm:table-cell")}>
+        Activity
+      </TableHead>
+      <TableHead className={cn(LABEL, "text-right")}>Points</TableHead>
+    </TableRow>
+  );
+}
+
 function Row({ row, isViewer }: { row: LeaderboardRow; isViewer: boolean }) {
   const medal = row.rank <= 3;
 
   return (
-    <li
-      className={cn(
-        // px-4 so the rank and score don't sit flush against the edge — most
-        // visible on the tinted viewer row, where the number kissed the fill.
-        // Full-width tint (no -mx bleed): the fill reaches the hairline rules,
-        // the content stays inset from it.
-        "flex items-center gap-4 px-4 py-3.5",
-        isViewer && "bg-accent/10",
-      )}
-    >
-      <span
+    // A tr background fills the row and cannot escape the table, so the viewer
+    // tint stays within the rules by construction — no bleed to guard against.
+    <TableRow className={cn(isViewer && "bg-accent/10 hover:bg-accent/10")}>
+      <TableCell
         className={cn(
-          "w-8 shrink-0 text-right font-mono text-sm tabular",
+          "w-12 py-3.5 text-right font-mono text-sm tabular",
           medal ? "text-foreground" : "text-muted-foreground",
         )}
       >
         {row.rank}
-      </span>
+      </TableCell>
 
-      {/* The top three get weight, not a colour: the rank number is already
-          the signal and a gold tint would say nothing to a reader who can't
-          see it. */}
-      <span
+      {/* The top three get weight, not a colour: the rank number is already the
+          signal and a gold tint would say nothing to a reader who can't see it. */}
+      <TableCell
         className={cn(
-          "min-w-0 flex-1 truncate",
+          "max-w-0 truncate py-3.5",
           medal ? "font-display text-lg" : "text-sm",
         )}
       >
         {row.name}
-        {isViewer ? (
-          <span className="ml-2 font-mono text-[0.625rem] text-muted-foreground uppercase tracking-[0.12em]">
-            you
-          </span>
-        ) : null}
-      </span>
+        {isViewer ? <span className={cn(LABEL, "ml-2")}>you</span> : null}
+      </TableCell>
 
-      <span className="hidden shrink-0 text-muted-foreground text-xs sm:block">
+      <TableCell className="hidden py-3.5 text-right text-muted-foreground text-xs sm:table-cell">
         {row.sessions} {row.sessions === 1 ? "interview" : "interviews"} ·{" "}
         {row.averageScore}% avg
-      </span>
+      </TableCell>
 
-      <span className="w-20 shrink-0 text-right font-display text-lg tabular">
+      <TableCell className="py-3.5 text-right font-display text-lg tabular">
         {row.points.toLocaleString("en-GB")}
-      </span>
-    </li>
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -254,14 +272,28 @@ function StandingNote({
 
 function BoardSkeleton() {
   return (
-    <ol className="mt-10 divide-y border-y" aria-hidden>
-      {SKELETON_ROWS.map((key) => (
-        <li key={key} className="flex items-center gap-4 px-4 py-3.5">
-          <span className="h-4 w-8 bg-muted" />
-          <span className="h-4 flex-1 bg-muted" />
-          <span className="h-4 w-16 bg-muted" />
-        </li>
-      ))}
-    </ol>
+    <Table className="mt-10" aria-hidden>
+      <TableHeader>
+        <HeadRow />
+      </TableHeader>
+      <TableBody>
+        {SKELETON_ROWS.map((key) => (
+          <TableRow key={key} className="hover:bg-transparent">
+            <TableCell className="w-12 py-3.5">
+              <span className="ml-auto block h-4 w-4 bg-muted" />
+            </TableCell>
+            <TableCell className="py-3.5">
+              <span className="block h-4 w-40 bg-muted" />
+            </TableCell>
+            <TableCell className="hidden py-3.5 sm:table-cell">
+              <span className="ml-auto block h-4 w-28 bg-muted" />
+            </TableCell>
+            <TableCell className="py-3.5">
+              <span className="ml-auto block h-4 w-10 bg-muted" />
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
