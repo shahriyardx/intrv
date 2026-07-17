@@ -1,7 +1,7 @@
 import type { ComponentProps, ElementType } from "react";
 import { cn } from "@/lib/utils";
 
-/** Question and feedback prose. Measure-capped — long lines hurt comprehension. */
+/** Question and feedback prose. */
 export function Prose({ className, ...props }: ComponentProps<"div">) {
   return (
     <div

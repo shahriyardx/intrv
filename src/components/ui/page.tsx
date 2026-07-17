@@ -10,14 +10,13 @@ import { cn } from "@/lib/utils";
 export const shell = "mx-auto w-full max-w-6xl px-6";
 
 /**
- * A readable line length inside the shell.
+ * Content width inside the shell — full width, by decision: every page matches
+ * the navbar's measure rather than sitting in a narrower reading column.
  *
- * The shell is sized for dense data — tables, stat rows, charts. Prose set to
- * that full width runs past 130 characters a line, which is roughly half again
- * the point where the eye starts losing its place returning to the left margin.
- * So anything meant to be *read* — marketing copy, a question prompt, feedback —
- * gets capped here, and is left-aligned within the shell rather than centred, so
- * it still lines up with everything else on the page.
+ * Kept as a single component rather than inlining `w-full` so page width has one
+ * knob: if a reading cap is ever wanted back (long prose does run wide at this
+ * width), it changes here and nowhere else. That single point of control is the
+ * reason it stays a wrapper instead of being deleted outright.
  */
 export function Measure({
   className,
@@ -26,5 +25,5 @@ export function Measure({
   className?: string;
   children: React.ReactNode;
 }) {
-  return <div className={cn("w-full max-w-3xl", className)}>{children}</div>;
+  return <div className={cn("w-full", className)}>{children}</div>;
 }
