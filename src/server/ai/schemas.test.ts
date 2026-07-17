@@ -1,5 +1,79 @@
 import { describe, expect, it } from "vitest";
-import { emitQuestionsSchema, normalizeQuestion } from "@/server/ai/schemas";
+import {
+  emitQuestionsSchema,
+  normalizeQuestion,
+  stripInlineMcqOptions,
+} from "@/server/ai/schemas";
+
+describe("stripInlineMcqOptions", () => {
+  const mcq = (prompt: string) =>
+    normalizeQuestion({
+      type: "MCQ",
+      prompt,
+      choices: [
+        { key: "A", text: "one" },
+        { key: "B", text: "two" },
+        { key: "C", text: "three" },
+        { key: "D", text: "four" },
+      ],
+      answerKey: "C",
+      explanation: "because",
+      concepts: ["git"],
+      keyPoints: [],
+    })?.prompt;
+
+  it("removes an inlined option block from the end of the prompt", () => {
+    const prompt = [
+      "What is the resulting commit graph on main?",
+      "",
+      "A) A -- B -- C -- D' (where D' is a copy of D)",
+      "B) A -- B -- C -- D (where D has moved to main)",
+      "C) A -- B -- C -- E (feature commits are squashed)",
+      "D) Nothing changes because D is not an ancestor of main",
+    ].join("\n");
+
+    expect(stripInlineMcqOptions(prompt)).toBe(
+      "What is the resulting commit graph on main?",
+    );
+    expect(mcq(prompt)).toBe("What is the resulting commit graph on main?");
+  });
+
+  it("handles the compact 'A.' and '(A)' marker styles too", () => {
+    expect(
+      stripInlineMcqOptions("Pick one.\nA. first\nB. second\nC. third"),
+    ).toBe("Pick one.");
+    expect(stripInlineMcqOptions("Pick one.\n(A) first\n(B) second")).toBe(
+      "Pick one.",
+    );
+  });
+
+  it("leaves a normal stem untouched", () => {
+    const prompt = "Which HTTP method is idempotent by definition?";
+    expect(stripInlineMcqOptions(prompt)).toBe(prompt);
+  });
+
+  it("does not strip a lone sentence that opens with a letter marker", () => {
+    // One option-shaped line is not a block — could be a real sentence.
+    const prompt = "A) is a note on the diagram. What does it mean?";
+    expect(stripInlineMcqOptions(prompt)).toBe(prompt);
+  });
+
+  it("never eats a fenced code block", () => {
+    const prompt = [
+      "What does this print?",
+      "```js",
+      "console.log(1 + 1)",
+      "```",
+    ].join("\n");
+    expect(stripInlineMcqOptions(prompt)).toBe(prompt);
+  });
+
+  it("keeps the prompt when the option block is the whole thing", () => {
+    // Nothing to show if we strip everything — a duplicated option beats a blank.
+    const prompt = "A) first\nB) second\nC) third";
+    expect(stripInlineMcqOptions(prompt)).toBe(prompt);
+  });
+});
 
 describe("emitQuestionsSchema — tolerating DeepSeek strict mode", () => {
   it("accepts a TRUE_FALSE question with no `choices` key at all", () => {

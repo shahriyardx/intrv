@@ -130,6 +130,48 @@ function promisesCodeButHasNone(prompt: string): boolean {
   return REFERS_TO_CODE.test(prompt) && !prompt.includes("```");
 }
 
+/** A line that opens an MCQ option: "A)", "(B)", "C.", "D -", any case. */
+const OPTION_LINE = /^\s*\(?([A-Da-d])[).:\]-]\s+\S/;
+
+/**
+ * The options belong in the choices field; the reader sees them rendered as
+ * selectable answers under the prompt. The model sometimes lists them in the
+ * prompt text too, and then the same four options show up twice — once as prose
+ * and once as buttons.
+ *
+ * This removes a trailing block of option lines from an MCQ prompt, but only
+ * when it is unmistakably that: a run to the end of the prompt where every
+ * non-blank line is option-formatted, at least two distinct letters appear, and
+ * it starts at A. A lone sentence that happens to open with "A)" isn't a block,
+ * and a fenced code block in the tail breaks the all-option-lines test — so a
+ * real stem, or a "what does this print" snippet, is never touched.
+ */
+export function stripInlineMcqOptions(prompt: string): string {
+  const lines = prompt.split("\n");
+
+  for (let i = 0; i < lines.length; i++) {
+    if (!OPTION_LINE.test(lines[i])) continue;
+
+    const tail = lines.slice(i).filter((l) => l.trim() !== "");
+    if (tail.length < 2) continue;
+    if (!tail.every((l) => OPTION_LINE.test(l))) continue;
+
+    const letters = new Set(
+      tail.map((l) =>
+        (l.match(OPTION_LINE) as RegExpMatchArray)[1].toUpperCase(),
+      ),
+    );
+    if (letters.size < 2 || !letters.has("A")) continue;
+
+    const head = lines.slice(0, i).join("\n").trim();
+    // Never strip the whole prompt away — a duplicated option is a smaller
+    // failure than a blank question.
+    return head || prompt;
+  }
+
+  return prompt;
+}
+
 export function normalizeQuestion(q: WireQuestion): NormalizedQuestion | null {
   const prompt = q.prompt.trim();
 
@@ -156,6 +198,10 @@ export function normalizeQuestion(q: WireQuestion): NormalizedQuestion | null {
 
       if (choices.length < 2) return null;
 
+      // The real options live in `choices`; drop any copy the model inlined into
+      // the prompt so it doesn't render twice.
+      const cleanedPrompt = stripInlineMcqOptions(base.prompt);
+
       // Match case-insensitively: the model is consistent about keys but not
       // always about their case.
       const key = choices.find(
@@ -165,6 +211,7 @@ export function normalizeQuestion(q: WireQuestion): NormalizedQuestion | null {
 
       return {
         ...base,
+        prompt: cleanedPrompt,
         type: "MCQ",
         choices,
         answerKey: { kind: "MCQ", key },
