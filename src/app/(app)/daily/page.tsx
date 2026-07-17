@@ -184,8 +184,9 @@ function StandingRow({ row }: { row: DailyStandingRow }) {
   return (
     <li
       className={cn(
-        "flex items-center gap-4 py-3.5",
-        // Full-width tint, no -mx bleed past the list's hairline rules.
+        // px-4 keeps the rank and score off the row edge; full-width tint (no
+        // -mx bleed) reaches the hairline rules with the content inset from it.
+        "flex items-center gap-4 px-4 py-3.5",
         row.isViewer && "bg-accent/10",
       )}
     >
@@ -239,7 +240,7 @@ function DailySkeleton() {
       </div>
       <ol className="divide-y border-y">
         {["a", "b", "c", "d", "e"].map((key) => (
-          <li key={key} className="flex items-center gap-4 py-3.5">
+          <li key={key} className="flex items-center gap-4 px-4 py-3.5">
             <Skeleton className="h-4 w-8" />
             <Skeleton className="h-4 flex-1" />
             <Skeleton className="h-4 w-14" />

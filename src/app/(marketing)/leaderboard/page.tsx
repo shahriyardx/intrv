@@ -152,9 +152,11 @@ function Row({ row, isViewer }: { row: LeaderboardRow; isViewer: boolean }) {
   return (
     <li
       className={cn(
-        "flex items-center gap-4 py-3.5",
-        // Full-width tint, no negative margin: the -mx bleed pushed the
-        // highlight past the ends of the list's hairline rules.
+        // px-4 so the rank and score don't sit flush against the edge — most
+        // visible on the tinted viewer row, where the number kissed the fill.
+        // Full-width tint (no -mx bleed): the fill reaches the hairline rules,
+        // the content stays inset from it.
+        "flex items-center gap-4 px-4 py-3.5",
         isViewer && "bg-accent/10",
       )}
     >
@@ -254,7 +256,7 @@ function BoardSkeleton() {
   return (
     <ol className="mt-10 divide-y border-y" aria-hidden>
       {SKELETON_ROWS.map((key) => (
-        <li key={key} className="flex items-center gap-4 py-3.5">
+        <li key={key} className="flex items-center gap-4 px-4 py-3.5">
           <span className="h-4 w-8 bg-muted" />
           <span className="h-4 flex-1 bg-muted" />
           <span className="h-4 w-16 bg-muted" />
