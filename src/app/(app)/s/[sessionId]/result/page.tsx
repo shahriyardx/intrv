@@ -45,10 +45,16 @@ export default async function ResultPage(props: {
           <SiteHeader>
             <SiteNav />
           </SiteHeader>
-          <main className={cn(shell, "flex-1 py-10")}>
-            <Measure>
-              <AssessmentSubmitted orgName={gate.orgName} />
-            </Measure>
+          {/* A terminal confirmation, not a document: it fills the shell and
+              centres in the page rather than sitting in a narrow reading
+              column. */}
+          <main
+            className={cn(
+              shell,
+              "flex flex-1 items-center justify-center py-10",
+            )}
+          >
+            <AssessmentSubmitted orgName={gate.orgName} />
           </main>
         </>
       );

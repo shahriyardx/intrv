@@ -8,7 +8,7 @@ import { CheckCircleIcon } from "@phosphor-icons/react/dist/ssr";
  */
 export function AssessmentSubmitted({ orgName }: { orgName: string }) {
   return (
-    <div className="flex min-h-72 flex-col items-center justify-center rounded-md border border-dashed px-6 py-16 text-center">
+    <div className="flex min-h-72 w-full flex-col items-center justify-center rounded-md border border-dashed px-6 py-16 text-center">
       <span
         aria-hidden
         className="mb-5 flex size-11 items-center justify-center rounded-sm bg-muted text-muted-foreground [&_svg]:size-6"
