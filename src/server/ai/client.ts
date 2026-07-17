@@ -43,6 +43,8 @@ export { beta as deepseekBeta, stable as deepseek };
 
 const MAX_ATTEMPTS = 4;
 const BASE_BACKOFF_MS = 800;
+/** Streaming reply attempts, including retries for an empty completion. */
+const MAX_STREAM_ATTEMPTS = 3;
 
 function classify(error: unknown): AiError {
   const status = (error as { status?: number })?.status;
@@ -253,14 +255,18 @@ export async function* callChatStream(
   }
 
   const startedAt = Date.now();
-  let attempts = 0;
-  let stream: Awaited<
-    ReturnType<typeof stable.chat.completions.create>
-  > | null = null;
+  let usage: UsageLike;
 
-  // Pre-stream: safe to retry, nothing has been emitted yet.
-  while (stream === null) {
-    attempts++;
+  // flash is a reasoning model, and it has a documented, unfixed habit of
+  // spending a whole completion on reasoning_content and emitting no answer at
+  // all — the stream finishes ok, usage shows hundreds of tokens, and
+  // delta.content never arrives. Raising max_tokens does not help: this is not
+  // truncation, the model just never wrote the answer half. The cure DeepSeek
+  // recommends is to retry, so the whole call is wrapped in a retry loop that
+  // fires whenever an attempt yields zero content. Retrying is safe precisely
+  // because "empty" means nothing was streamed to the client yet.
+  for (let attempt = 1; attempt <= MAX_STREAM_ATTEMPTS; attempt++) {
+    let stream: Awaited<ReturnType<typeof stable.chat.completions.create>>;
     try {
       stream = await stable.chat.completions.create(
         {
@@ -270,13 +276,8 @@ export async function* callChatStream(
             { role: "user", content: opts.user },
           ],
           temperature: 0.6,
-          // flash is a reasoning model: it spends completion tokens on
-          // reasoning_content (which we drop) before any answer reaches
-          // delta.content. A 500 cap was consumed entirely by reasoning on all
-          // but the shortest questions — the stream finished with finish_reason
-          // "length" and zero content, which the client surfaced as
-          // "(no reply)". The budget has to cover the thinking AND the answer;
-          // a full tutor reply here measured ~600 reasoning + ~900 answer.
+          // Covers the reasoning tokens (dropped) plus the answer; a full tutor
+          // reply measured ~600 reasoning + ~900 answer.
           max_tokens: 2500,
           stream: true,
           // Ask DeepSeek to append a usage frame on the final chunk.
@@ -286,7 +287,8 @@ export async function* callChatStream(
       );
     } catch (error) {
       const aiError = error instanceof AiError ? error : classify(error);
-      if (aiError.retryable && attempts < 2) {
+      // Nothing emitted yet, so a create failure is always safe to retry.
+      if (aiError.retryable && attempt < MAX_STREAM_ATTEMPTS) {
         await sleep(BASE_BACKOFF_MS + Math.random() * 250);
         continue;
       }
@@ -297,25 +299,65 @@ export async function* callChatStream(
         usage: undefined,
         latencyMs: Date.now() - startedAt,
         ok: false,
-        attempts,
+        attempts: attempt,
         errorCode: aiError.code,
       });
       throw aiError;
     }
-  }
 
-  let usage: UsageLike;
-  try {
-    for await (const chunk of stream as AsyncIterable<{
-      choices?: { delta?: { content?: string | null } }[];
-      usage?: UsageLike;
-    }>) {
-      if (chunk.usage) usage = chunk.usage;
-      const delta = chunk.choices?.[0]?.delta?.content;
-      if (delta) yield delta;
+    let yielded = false;
+    try {
+      for await (const chunk of stream as AsyncIterable<{
+        choices?: { delta?: { content?: string | null } }[];
+        usage?: UsageLike;
+      }>) {
+        if (chunk.usage) usage = chunk.usage;
+        const delta = chunk.choices?.[0]?.delta?.content;
+        if (delta) {
+          yielded = true;
+          yield delta;
+        }
+      }
+    } catch (error) {
+      // A mid-stream error can only be retried while nothing has been yielded —
+      // once the client holds part of a reply, restarting would duplicate it.
+      const aiError = error instanceof AiError ? error : classify(error);
+      if (!yielded && aiError.retryable && attempt < MAX_STREAM_ATTEMPTS) {
+        await sleep(BASE_BACKOFF_MS + Math.random() * 250);
+        continue;
+      }
+      recordCall({
+        sessionId: opts.sessionId ?? null,
+        model: MODELS.flash,
+        purpose: "discuss",
+        usage,
+        latencyMs: Date.now() - startedAt,
+        ok: false,
+        attempts: attempt,
+        errorCode: aiError.code,
+      });
+      throw aiError;
     }
-  } catch (error) {
-    // Mid-stream failure: no retry, but still record the attempt for cost/health.
+
+    if (yielded) {
+      recordCall({
+        sessionId: opts.sessionId ?? null,
+        model: MODELS.flash,
+        purpose: "discuss",
+        usage,
+        latencyMs: Date.now() - startedAt,
+        ok: true,
+        attempts: attempt,
+      });
+      return;
+    }
+
+    // Empty completion — retry if there are attempts left, otherwise give up and
+    // let the caller surface "the tutor didn't answer".
+    if (attempt < MAX_STREAM_ATTEMPTS) {
+      await sleep(BASE_BACKOFF_MS + Math.random() * 250);
+      continue;
+    }
     recordCall({
       sessionId: opts.sessionId ?? null,
       model: MODELS.flash,
@@ -323,21 +365,10 @@ export async function* callChatStream(
       usage,
       latencyMs: Date.now() - startedAt,
       ok: false,
-      attempts,
-      errorCode: (error instanceof AiError ? error : classify(error)).code,
+      attempts: attempt,
+      errorCode: "empty_content",
     });
-    throw error instanceof AiError ? error : classify(error);
   }
-
-  recordCall({
-    sessionId: opts.sessionId ?? null,
-    model: MODELS.flash,
-    purpose: "discuss",
-    usage,
-    latencyMs: Date.now() - startedAt,
-    ok: true,
-    attempts,
-  });
 }
 
 type UsageLike =

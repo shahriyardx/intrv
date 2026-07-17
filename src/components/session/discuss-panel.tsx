@@ -54,11 +54,18 @@ export function DiscussPanel({
 
   const reply = (query.data ?? []).join("");
 
-  // The generator resolves to success when the reply is complete; commit it to
-  // history then. An error must not swallow the student's question — it stays in
-  // `turns`, and they can ask again.
+  // Commit only once the stream has fully finished. A streaming query reports
+  // status "success" on its very first render — with the data array still empty
+  // — and only then fills in per yield. Acting on "success" alone therefore
+  // committed an empty reply and, worse, ran setSubmitted(null), which with
+  // gcTime: 0 tore the query down and ABORTED the in-flight stream: the server
+  // finished generating (telemetry showed a full, ok reply) but the client had
+  // already hung up. fetchStatus "idle" is the real "the generator returned"
+  // signal; until then, keep waiting and let the array grow.
   useEffect(() => {
     if (submitted === null) return;
+    if (query.fetchStatus !== "idle") return;
+
     if (query.status === "success") {
       const text = reply.trim();
       // An empty completion is a failure, not an answer: committing "(no reply)"
@@ -75,7 +82,7 @@ export function DiscussPanel({
       setError("Couldn't reach the tutor just now. Try again.");
       setSubmitted(null);
     }
-  }, [query.status, reply, submitted]);
+  }, [query.status, query.fetchStatus, reply, submitted]);
 
   const studentTurns = turns.filter((t) => t.role === "student").length;
   const atLimit = studentTurns >= MAX_STUDENT_TURNS;
