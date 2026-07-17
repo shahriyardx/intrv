@@ -9,9 +9,9 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { getActiveOrg, listAssessments } from "@/server/dal/org";
 import { getViewer } from "@/server/dal/session";
 
-export const metadata: Metadata = { title: "Screens" };
+export const metadata: Metadata = { title: "Assessments" };
 
-export default async function OrgScreensPage() {
+export default async function OrgAssessmentsPage() {
   const org = await getActiveOrg();
   if (!org) redirect("/dashboard");
 
@@ -22,7 +22,7 @@ export default async function OrgScreensPage() {
   return (
     <div className="space-y-6">
       {/* No New assessment button here: the org header carries it on every page. */}
-      <SectionHeading label="Screens" title="Every assessment" />
+      <SectionHeading label="Assessments" title="Every assessment" />
 
       {assessments.length === 0 ? (
         <EmptyState

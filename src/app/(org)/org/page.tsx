@@ -79,10 +79,10 @@ export default async function OrgDashboardPage() {
           <SectionHeading label="All time" title="Where things stand" />
           <StatRow>
             <StatTile
-              label="Screens"
-              value={formatCount(overview.activeScreens)}
-              note={`${formatCount(overview.totalScreens)} total · ${formatCount(
-                overview.totalScreens - overview.activeScreens,
+              label="Assessments"
+              value={formatCount(overview.activeAssessments)}
+              note={`${formatCount(overview.totalAssessments)} total · ${formatCount(
+                overview.totalAssessments - overview.activeAssessments,
               )} closed`}
             />
             <StatTile
@@ -176,7 +176,7 @@ export default async function OrgDashboardPage() {
       </section>
 
       <section className="space-y-6">
-        <SectionHeading label="Screens" title="Your assessments" />
+        <SectionHeading label="Assessments" title="Your assessments" />
         <AssessmentsTable assessments={assessments.slice(0, 5)} />
       </section>
     </div>

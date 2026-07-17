@@ -54,8 +54,8 @@ async function memberOf(viewer: Viewer, orgId: string): Promise<boolean> {
 // ---------------------------------------------------------------------------
 
 export type OrgOverview = {
-  activeScreens: number;
-  totalScreens: number;
+  activeAssessments: number;
+  totalAssessments: number;
   candidates: number;
   candidates7d: number;
   /** Submitted ÷ started, over attempts old enough to judge. Null with no data. */
@@ -76,7 +76,7 @@ export async function getOrgOverview(
   const now = Date.now();
   const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
 
-  const [assessments, activeScreens, sessions] = await Promise.all([
+  const [assessments, activeAssessments, sessions] = await Promise.all([
     prisma.assessment.count({ where: { orgId } }),
     prisma.assessment.count({ where: { orgId, active: true } }),
     prisma.interviewSession.findMany({
@@ -116,8 +116,8 @@ export async function getOrgOverview(
   }).length;
 
   return {
-    activeScreens,
-    totalScreens: assessments,
+    activeAssessments,
+    totalAssessments: assessments,
     candidates: sessions.length,
     candidates7d: sessions.filter((s) => s.createdAt >= weekAgo).length,
     completionRate: settled === 0 ? null : submitted.length / settled,

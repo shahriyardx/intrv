@@ -229,7 +229,7 @@ export function ContactForm({ token }: { token: string }) {
  * tech alike, so anything in it came from something reading the markup rather
  * than the page.
  *
- * Off-assessment rather than `display:none`: a browser skips a hidden field, but so
+ * Off-screen rather than `display:none`: a browser skips a hidden field, but so
  * do the bots worth catching — they fill in what the DOM offers. This stays a
  * real, laid-out field, out of the tab order and out of the accessibility tree.
  */

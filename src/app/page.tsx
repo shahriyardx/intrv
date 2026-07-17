@@ -37,7 +37,7 @@ const STEPS = [
   {
     n: "02",
     title: "Answer as they arrive",
-    body: "Questions stream in as they're written, so the first one is on assessment in seconds while the rest are still being generated.",
+    body: "Questions stream in as they're written, so the first one is on screen in seconds while the rest are still being generated.",
     aside: "No waiting on a loading bar.",
   },
   {

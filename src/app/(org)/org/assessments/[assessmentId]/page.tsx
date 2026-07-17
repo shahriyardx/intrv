@@ -61,7 +61,7 @@ export default async function ScreenReportPage({ params }: Props) {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           {/* No org/Assessment breadcrumb: the header above already names the org,
-              and the nav already says you are in Screens. */}
+              and the nav already says you are in Assessments. */}
           <h2 className="font-display text-display-md">{assessment.title}</h2>
           <p className="mt-1 font-mono text-[0.625rem] text-muted-foreground uppercase tracking-[0.12em]">
             {assessment.topic} · {assessment.difficulty.toLowerCase()} ·{" "}

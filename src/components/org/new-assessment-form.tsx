@@ -206,7 +206,7 @@ export function NewAssessmentForm({ orgId }: { orgId: string }) {
             </div>
           </Row>
 
-          <Row label="Time limit" hint="Screens are always timed.">
+          <Row label="Time limit" hint="Assessments are always timed.">
             <div className="flex flex-wrap gap-2">
               {SCREEN_TIMES.map((m) => (
                 <label key={m} className="cursor-pointer">
