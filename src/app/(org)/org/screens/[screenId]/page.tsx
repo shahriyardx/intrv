@@ -20,7 +20,7 @@ import { env } from "@/lib/env";
 import { getScreenReport } from "@/server/dal/org";
 import { getViewer } from "@/server/dal/session";
 
-type Props = { params: Promise<{ slug: string; screenId: string }> };
+type Props = { params: Promise<{ screenId: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { screenId } = await params;
@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ScreenReportPage({ params }: Props) {
-  const { slug, screenId } = await params;
+  const { screenId } = await params;
   const viewer = await getViewer();
 
   const report = await getScreenReport(viewer, screenId);
@@ -45,7 +45,7 @@ export default async function ScreenReportPage({ params }: Props) {
         <div>
           <DataLabel>
             <Link
-              href={`/org/${slug}` as Route}
+              href={"/org" as Route}
               className="underline-offset-4 hover:text-foreground hover:underline"
             >
               {screen.orgName}
@@ -53,7 +53,7 @@ export default async function ScreenReportPage({ params }: Props) {
             / Screen
           </DataLabel>
           <h2 className="mt-2 font-display text-display-md">{screen.title}</h2>
-          <p className="mt-1 font-mono text-[0.625rem] uppercase tracking-[0.12em] text-muted-foreground">
+          <p className="mt-1 font-mono text-[0.625rem] text-muted-foreground uppercase tracking-[0.12em]">
             {screen.topic} · {screen.difficulty.toLowerCase()} ·{" "}
             {screen.questionCount} questions ·{" "}
             {screen.timeLimitMs
@@ -73,13 +73,13 @@ export default async function ScreenReportPage({ params }: Props) {
         <div className="flex items-baseline justify-between gap-4">
           <DataLabel as="h3">Invite link</DataLabel>
           {!screen.active ? (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-muted-foreground text-xs">
               Closed — new candidates are turned away.
             </span>
           ) : null}
         </div>
         <InviteLink url={inviteUrl} />
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           Anyone with this link can take the screen — no account needed. Rotate
           it to revoke every link you've shared.
         </p>
@@ -93,7 +93,7 @@ export default async function ScreenReportPage({ params }: Props) {
       <section className="space-y-4">
         <div className="flex items-baseline justify-between gap-4">
           <DataLabel as="h3">Candidates</DataLabel>
-          <span className="font-mono text-xs text-muted-foreground tabular">
+          <span className="font-mono text-muted-foreground text-xs tabular">
             {candidates.length}{" "}
             {candidates.length === 1 ? "attempt" : "attempts"}
           </span>
@@ -108,7 +108,7 @@ export default async function ScreenReportPage({ params }: Props) {
               <UsersThreeIcon weight="duotone" />
             </span>
             <p className="font-display text-display-md">No attempts yet</p>
-            <p className="mt-2 max-w-sm text-pretty text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-2 max-w-sm text-pretty text-muted-foreground text-sm leading-relaxed">
               Share the invite link above. Every candidate who takes the screen
               shows up here with their score and anti-cheat signals.
             </p>
@@ -133,9 +133,7 @@ export default async function ScreenReportPage({ params }: Props) {
                     <TableCell className="max-w-40 truncate font-medium">
                       {c.status === "GRADED" ? (
                         <Link
-                          href={
-                            `/org/${slug}/screens/${screen.id}/c/${c.id}` as Route
-                          }
+                          href={`/org/screens/${screen.id}/c/${c.id}` as Route}
                           className="underline-offset-4 hover:underline"
                         >
                           {name}
@@ -144,7 +142,7 @@ export default async function ScreenReportPage({ params }: Props) {
                         name
                       )}
                     </TableCell>
-                    <TableCell className="max-w-48 truncate font-mono text-xs text-muted-foreground">
+                    <TableCell className="max-w-48 truncate font-mono text-muted-foreground text-xs">
                       {c.email ?? "—"}
                     </TableCell>
                     <TableCell>
@@ -155,7 +153,7 @@ export default async function ScreenReportPage({ params }: Props) {
                     <TableCell className="text-right font-mono tabular">
                       {c.score === null ? "—" : `${Math.round(c.score)}%`}
                     </TableCell>
-                    <TableCell className="text-right font-mono tabular text-muted-foreground">
+                    <TableCell className="text-right font-mono text-muted-foreground tabular">
                       {formatDuration(c.durationMs)}
                     </TableCell>
                     <TableCell>

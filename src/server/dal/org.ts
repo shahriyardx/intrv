@@ -5,6 +5,7 @@ import { integritySchema } from "@/lib/schemas";
 import { clientQuestionSelect, toClientQuestion } from "@/server/dal/dto";
 import type { SessionDetail } from "@/server/dal/interview";
 import type { Viewer } from "@/server/dal/owner";
+import { getAuthSession } from "@/server/dal/session";
 
 /**
  * Membership-checked reads for the organizations surface.
@@ -36,44 +37,7 @@ async function orgRole(viewer: Viewer, orgId: string): Promise<OrgRole | null> {
   return (membership?.role as OrgRole | undefined) ?? null;
 }
 
-export type OrgSummary = {
-  id: string;
-  name: string;
-  slug: string;
-  role: OrgRole;
-  screenCount: number;
-};
-
-/** The orgs the viewer belongs to. Anonymous viewers belong to none. */
-export async function getViewerOrgs(viewer: Viewer): Promise<OrgSummary[]> {
-  if (viewer.kind !== "user") return [];
-
-  const memberships = await prisma.member.findMany({
-    where: { userId: viewer.userId },
-    orderBy: { createdAt: "asc" },
-    select: {
-      role: true,
-      organization: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          _count: { select: { screens: true } },
-        },
-      },
-    },
-  });
-
-  return memberships.map((m) => ({
-    id: m.organization.id,
-    name: m.organization.name,
-    slug: m.organization.slug,
-    role: m.role as OrgRole,
-    screenCount: m.organization._count.screens,
-  }));
-}
-
-export type OrgDetail = {
+export type ActiveOrg = {
   id: string;
   name: string;
   slug: string;
@@ -81,37 +45,60 @@ export type OrgDetail = {
 };
 
 /**
- * An org by slug, but only for a member. Both "no such org" and "not a member"
- * return null, so this cannot be used to probe which slugs exist.
+ * The viewer's organization — the source of truth for "this is an org account".
+ *
+ * One org per user, so the account model is binary: an org account has exactly
+ * one membership, a personal account has none. We read the org from
+ * `session.activeOrganizationId` (the better-auth plugin sets it when the org is
+ * created), then verify the membership and pull the role. The cookie cache can
+ * briefly lag a just-created org, so we fall back to the user's single
+ * membership — same answer, one org per user — rather than flash "personal".
+ *
+ * Returns null for anonymous and personal accounts alike.
  */
-export async function getOrgBySlug(
-  viewer: Viewer,
-  slug: string,
-): Promise<OrgDetail | null> {
-  if (viewer.kind !== "user") return null;
+export async function getActiveOrg(): Promise<ActiveOrg | null> {
+  const session = await getAuthSession();
+  const userId = session?.user?.id;
+  if (!userId) return null;
 
-  const org = await prisma.organization.findUnique({
-    where: { slug },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      members: {
-        where: { userId: viewer.userId },
-        select: { role: true },
-      },
-    },
-  });
+  const activeOrgId = session.session.activeOrganizationId ?? null;
 
-  const membership = org?.members[0];
-  if (!org || !membership) return null;
+  const membership = activeOrgId
+    ? await prisma.member.findUnique({
+        where: {
+          organizationId_userId: { organizationId: activeOrgId, userId },
+        },
+        select: {
+          role: true,
+          organization: { select: { id: true, name: true, slug: true } },
+        },
+      })
+    : // Fallback while the session catches up: one org per user, so the single
+      // membership is unambiguous.
+      await prisma.member.findFirst({
+        where: { userId },
+        select: {
+          role: true,
+          organization: { select: { id: true, name: true, slug: true } },
+        },
+      });
+
+  if (!membership) return null;
 
   return {
-    id: org.id,
-    name: org.name,
-    slug: org.slug,
+    id: membership.organization.id,
+    name: membership.organization.name,
+    slug: membership.organization.slug,
     role: membership.role as OrgRole,
   };
+}
+
+/**
+ * Whether the viewer is an organization account. The one gate the app splits on:
+ * org accounts see only the org surface, personal accounts never see it.
+ */
+export async function isOrgAccount(): Promise<boolean> {
+  return (await getActiveOrg()) !== null;
 }
 
 export type ScreenRow = {

@@ -2,6 +2,7 @@ import { CalendarBlankIcon, TrophyIcon } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { OrgAccountGate } from "@/components/org/org-account-gate";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,7 @@ export const metadata: Metadata = {
 export default function DailyPage() {
   return (
     <>
+      <OrgAccountGate />
       <SiteHeader>
         <SiteNav />
       </SiteHeader>

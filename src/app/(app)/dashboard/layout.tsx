@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { OrgAccountGate } from "@/components/org/org-account-gate";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
 import { DataLabel } from "@/components/ui/prose";
@@ -46,6 +47,7 @@ export default function DashboardLayout({
         <Suspense fallback={null}>
           <AuthGate />
         </Suspense>
+        <OrgAccountGate />
         <div className="py-10">{children}</div>
       </main>
     </>

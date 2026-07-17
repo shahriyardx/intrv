@@ -2,8 +2,10 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  BuildingsIcon,
   GoogleLogoIcon,
   SpinnerGapIcon,
+  UserIcon,
   WarningIcon,
 } from "@phosphor-icons/react";
 import type { Route } from "next";
@@ -22,22 +24,32 @@ import {
 import { Input } from "@/components/ui/input";
 import { DataLabel } from "@/components/ui/prose";
 import { authClient, safeNextPath } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
+import { createOrganization } from "@/server/actions/org";
 
 // Mirrors emailAndPassword.minPasswordLength in src/lib/auth.ts.
 const MIN_PASSWORD = 8;
 
-const signUpSchema = z.object({
-  name: z.string().trim().min(1, "Tell us what to call you.").max(80),
-  email: z
-    .string()
-    .trim()
-    .min(1, "Enter your email address.")
-    // Deliberately loose: the server owns the real verdict.
-    .regex(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, "That isn't an email address."),
-  password: z
-    .string()
-    .min(MIN_PASSWORD, `At least ${MIN_PASSWORD} characters.`),
-});
+const signUpSchema = z
+  .object({
+    accountType: z.enum(["personal", "org"]),
+    name: z.string().trim().min(1, "Tell us what to call you.").max(80),
+    email: z
+      .string()
+      .trim()
+      .min(1, "Enter your email address.")
+      // Deliberately loose: the server owns the real verdict.
+      .regex(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, "That isn't an email address."),
+    password: z
+      .string()
+      .min(MIN_PASSWORD, `At least ${MIN_PASSWORD} characters.`),
+    orgName: z.string().trim().max(80).optional(),
+  })
+  // The org name is only required when signing up as an organization.
+  .refine((d) => d.accountType !== "org" || (d.orgName?.length ?? 0) >= 2, {
+    message: "Give your organization a name of at least 2 characters.",
+    path: ["orgName"],
+  });
 
 type SignUpValues = z.infer<typeof signUpSchema>;
 
@@ -48,8 +60,8 @@ export function SignUpForm({
   next?: string;
   googleEnabled: boolean;
 }) {
-  // reactCompiler optimizes away RHF v7's formState Proxy access-tracking, so
-  // error/isSubmitting changes wouldn't re-render. Opt out until RHF v8.
+  // reactCompiler optimizes away RHF v7's formState/watch Proxy access-tracking,
+  // so error/isSubmitting/watch changes wouldn't re-render. Opt out until RHF v8.
   "use no memo";
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
@@ -59,33 +71,58 @@ export function SignUpForm({
 
   const form = useForm<SignUpValues>({
     resolver: zodResolver(signUpSchema),
-    defaultValues: { name: "", email: "", password: "" },
+    defaultValues: {
+      accountType: "personal",
+      name: "",
+      email: "",
+      password: "",
+      orgName: "",
+    },
   });
 
   const destination = safeNextPath(next);
   const { errors, isSubmitting } = form.formState;
+  const isOrg = form.watch("accountType") === "org";
   const pending = isSubmitting || redirecting;
   const busy = pending || googlePending;
 
-  const onSubmit = form.handleSubmit(async ({ name, email, password }) => {
-    setFormError(null);
-    const result = await authClient.signUp.email({ name, email, password });
+  const onSubmit = form.handleSubmit(
+    async ({ accountType, name, email, password, orgName }) => {
+      setFormError(null);
+      const result = await authClient.signUp.email({ name, email, password });
 
-    if (result.error) {
-      // "User already exists" and friends come from better-auth. Surfacing the
-      // real message beats a generic failure the reader can't act on.
-      setFormError(
-        result.error.message ?? "Could not create your account. Try again.",
-      );
-      return;
-    }
+      if (result.error) {
+        // "User already exists" and friends come from better-auth. Surfacing the
+        // real message beats a generic failure the reader can't act on.
+        setFormError(
+          result.error.message ?? "Could not create your account. Try again.",
+        );
+        return;
+      }
 
-    // No email verification is configured, so sign-up returns a live session and
-    // we can go straight through rather than parking on a "check your inbox".
-    setRedirecting(true);
-    router.push(destination as Route);
-    router.refresh();
-  });
+      setRedirecting(true);
+
+      if (accountType === "org") {
+        // The account now has a session; create its one org, which flips it to
+        // an org account (sets activeOrganizationId) and redirects to /org.
+        const data = new FormData();
+        data.set("name", orgName ?? "");
+        const orgResult = await createOrganization(null, data);
+        // Success redirects; only an error object returns. The account exists
+        // either way, so surface the error rather than pretend signup failed.
+        if (orgResult && !orgResult.ok) {
+          setRedirecting(false);
+          setFormError(orgResult.error);
+        }
+        return;
+      }
+
+      // No email verification is configured, so sign-up returns a live session
+      // and we go straight through rather than parking on "check your inbox".
+      router.push(destination as Route);
+      router.refresh();
+    },
+  );
 
   async function onGoogle() {
     setFormError(null);
@@ -130,16 +167,55 @@ export function SignUpForm({
       ) : null}
 
       <form onSubmit={onSubmit} noValidate className="space-y-5">
+        <fieldset className="space-y-2">
+          <legend className="mb-2">
+            <DataLabel>Account type</DataLabel>
+          </legend>
+          <div className="grid grid-cols-2 gap-2">
+            <AccountTypeCard
+              value="personal"
+              icon={<UserIcon weight="duotone" className="size-4" />}
+              title="Personal"
+              blurb="Practice interviews and track your progress."
+              register={form.register("accountType")}
+            />
+            <AccountTypeCard
+              value="org"
+              icon={<BuildingsIcon weight="duotone" className="size-4" />}
+              title="Organization"
+              blurb="Screen candidates with frozen interviews and reports."
+              register={form.register("accountType")}
+            />
+          </div>
+        </fieldset>
+
+        {isOrg ? (
+          <Field>
+            <FieldLabel htmlFor="signup-org">
+              <DataLabel>Organization name</DataLabel>
+            </FieldLabel>
+            <Input
+              id="signup-org"
+              type="text"
+              maxLength={80}
+              placeholder="e.g. Acme Engineering"
+              aria-invalid={errors.orgName ? true : undefined}
+              className="h-10 text-sm"
+              {...form.register("orgName")}
+            />
+            <FieldError errors={[errors.orgName]} />
+          </Field>
+        ) : null}
+
         <Field>
           <FieldLabel htmlFor="signup-name">
-            <DataLabel>Name</DataLabel>
+            <DataLabel>{isOrg ? "Your name" : "Name"}</DataLabel>
           </FieldLabel>
           <Input
             id="signup-name"
             type="text"
             autoComplete="name"
             maxLength={80}
-            autoFocus
             aria-invalid={errors.name ? true : undefined}
             className="h-10 text-sm"
             {...form.register("name")}
@@ -201,8 +277,10 @@ export function SignUpForm({
           {pending ? (
             <>
               <SpinnerGapIcon className="size-4 animate-spin" />
-              Creating account…
+              {isOrg ? "Creating organization…" : "Creating account…"}
             </>
+          ) : isOrg ? (
+            "Create organization account"
           ) : (
             "Create account"
           )}
@@ -224,5 +302,44 @@ export function SignUpForm({
         .
       </p>
     </div>
+  );
+}
+
+function AccountTypeCard({
+  value,
+  icon,
+  title,
+  blurb,
+  register,
+}: {
+  value: "personal" | "org";
+  icon: React.ReactNode;
+  title: string;
+  blurb: string;
+  register: ReturnType<ReturnType<typeof useForm<SignUpValues>>["register"]>;
+}) {
+  return (
+    <label className="cursor-pointer">
+      <input
+        type="radio"
+        value={value}
+        className="peer sr-only"
+        {...register}
+      />
+      <div
+        className={cn(
+          "h-full rounded-md border p-3 transition-colors",
+          "peer-checked:border-foreground peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring",
+        )}
+      >
+        <span className="flex items-center gap-1.5 font-medium text-sm">
+          {icon}
+          {title}
+        </span>
+        <span className="mt-1 block text-muted-foreground text-xs leading-snug">
+          {blurb}
+        </span>
+      </div>
+    </label>
   );
 }

@@ -27,21 +27,27 @@ export type ActionError = { ok: false; error: string };
  * the UI that called it proves nothing.
  */
 
-/** A user may own at most this many orgs — a friendly cap, not a hard limit. */
-const MAX_OWNED_ORGS = 3;
-
+// Not exported: a "use server" module may only export async functions. The
+// sign-up form mirrors these bounds in its own client schema.
 const orgNameSchema = z
   .string()
   .trim()
   .min(2, "Give the organization a name of at least 2 characters.")
   .max(80, "Keep the organization name under 80 characters.");
 
+/**
+ * Creates the account's organization. One org per user: an account is either
+ * personal or an org account, and an org account has exactly one org. This is
+ * the only creation path — it runs from the sign-up flow when someone chooses
+ * an organization account, and flips them to an org account by giving them a
+ * membership and setting session.activeOrganizationId.
+ */
 export async function createOrganization(
   _prev: unknown,
   formData: FormData,
 ): Promise<ActionError | never> {
   const viewer = await getViewer();
-  if (viewer.kind !== "user") redirect("/sign-in?next=/org");
+  if (viewer.kind !== "user") redirect("/sign-in?next=/sign-up");
 
   const parsed = orgNameSchema.safeParse(String(formData.get("name") ?? ""));
   if (!parsed.success) {
@@ -52,27 +58,25 @@ export async function createOrganization(
   }
   const name = parsed.data;
 
-  // "Owned" is now an owner-role membership — the plugin has no ownerId column.
-  // This preserves the prior cap exactly.
-  const owned = await prisma.member.count({
-    where: { userId: viewer.userId, role: "owner" },
+  // One org per user — reject if this account already belongs to one.
+  const existing = await prisma.member.count({
+    where: { userId: viewer.userId },
   });
-  if (owned >= MAX_OWNED_ORGS) {
-    return {
-      ok: false,
-      error: `You can own up to ${MAX_OWNED_ORGS} organizations. Ask an owner to add you to theirs instead.`,
-    };
+  if (existing >= 1) {
+    return { ok: false, error: "This account already has an organization." };
   }
 
   // Pre-dedupe the slug so we keep the -2/-3 suffixing behaviour; the plugin
   // would otherwise just reject a taken slug. better-auth then creates the org
   // and the creator's owner member atomically.
   const slug = await uniqueSlug(name);
+  const requestHeaders = await headers();
 
+  let created: { id: string } | null;
   try {
-    await auth.api.createOrganization({
+    created = await auth.api.createOrganization({
       body: { name, slug },
-      headers: await headers(),
+      headers: requestHeaders,
     });
   } catch {
     return {
@@ -80,10 +84,26 @@ export async function createOrganization(
       error: "We couldn't create that organization. Please try again.",
     };
   }
+  if (!created) {
+    return {
+      ok: false,
+      error: "We couldn't create that organization. Please try again.",
+    };
+  }
 
-  // Interpolated route: typedRoutes can't verify the slug segment, so assert
-  // it, the same way the admin pages do for their dynamic links.
-  redirect(`/org/${slug}` as Route);
+  // Set it active so session.activeOrganizationId — the source of truth for org
+  // accounts — is populated now, not on the next session refresh. getActiveOrg
+  // falls back to the membership if this races, so a failure here is non-fatal.
+  try {
+    await auth.api.setActiveOrganization({
+      body: { organizationId: created.id },
+      headers: requestHeaders,
+    });
+  } catch {
+    // non-fatal — the membership fallback covers it.
+  }
+
+  redirect("/org");
 }
 
 /** A slug free at read time; suffixes -2, -3… on collision. */
@@ -146,7 +166,7 @@ export async function createScreen(
     where: {
       organizationId_userId: { organizationId: orgId, userId: viewer.userId },
     },
-    select: { role: true, organization: { select: { slug: true } } },
+    select: { role: true },
   });
   if (
     !membership ||
@@ -231,9 +251,7 @@ export async function createScreen(
     select: { id: true },
   });
 
-  redirect(
-    `/org/${membership.organization.slug}/screens/${screen.id}` as Route,
-  );
+  redirect(`/org/screens/${screen.id}` as Route);
 }
 
 /** owner/admin only: flip whether a screen accepts new candidates. */

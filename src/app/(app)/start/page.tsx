@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { OrgAccountGate } from "@/components/org/org-account-gate";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
 import { DataLabel } from "@/components/ui/prose";
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
 export default function StartPage() {
   return (
     <>
+      <OrgAccountGate />
       <SiteHeader>
         <SiteNav />
       </SiteHeader>

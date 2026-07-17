@@ -38,9 +38,12 @@ import { authClient } from "@/lib/auth-client";
 export function UserMenu({
   user,
   isAdmin = false,
+  isOrgAccount = false,
 }: {
   user: { name: string; email: string; image?: string | null } | null;
   isAdmin?: boolean;
+  /** Org accounts see only the org surface; personal accounts never see it. */
+  isOrgAccount?: boolean;
 }) {
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
@@ -117,21 +120,23 @@ export function UserMenu({
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem asChild>
-          <Link href="/dashboard">
-            <SquaresFourIcon className="size-4" />
-            Dashboard
-          </Link>
-        </DropdownMenuItem>
-
-        {/* Shown to every signed-in user: organizations are self-serve, so the
-            link is not a disclosure the way /admin is. */}
-        <DropdownMenuItem asChild>
-          <Link href={"/org" as Route}>
-            <BuildingsIcon className="size-4" />
-            Organizations
-          </Link>
-        </DropdownMenuItem>
+        {/* One surface per account type: an org account only ever sees the org
+            dashboard, a personal account only the personal one. */}
+        {isOrgAccount ? (
+          <DropdownMenuItem asChild>
+            <Link href={"/org" as Route}>
+              <BuildingsIcon className="size-4" />
+              Organization
+            </Link>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem asChild>
+            <Link href="/dashboard">
+              <SquaresFourIcon className="size-4" />
+              Dashboard
+            </Link>
+          </DropdownMenuItem>
+        )}
 
         {/* Gated on the role rather than on /admin 404ing: a link rendered to
             everyone would announce the surface exists. */}

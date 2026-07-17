@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
 import { DataLabel } from "@/components/ui/prose";
+import { getActiveOrg } from "@/server/dal/org";
 import { getViewer } from "@/server/dal/session";
 
 export const metadata: Metadata = {
@@ -33,6 +34,11 @@ export default function OrgLayout({ children }: { children: React.ReactNode }) {
 async function OrgShell({ children }: { children: React.ReactNode }) {
   const viewer = await getViewer();
   if (viewer.kind !== "user") redirect("/sign-in?next=/org");
+
+  // The org surface is for organization accounts only. A signed-in personal
+  // account has no org (org creation is signup-only) and is sent to their own
+  // dashboard — the mirror of the (app) gate that sends org accounts here.
+  if (!(await getActiveOrg())) redirect("/dashboard");
 
   return (
     <>

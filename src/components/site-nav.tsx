@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { UserMenu } from "@/components/auth/user-menu";
 import { isAdminUser } from "@/server/dal/admin";
+import { isOrgAccount } from "@/server/dal/org";
 import { getAuthSession } from "@/server/dal/session";
 
 /**
@@ -31,7 +32,10 @@ async function SessionNav() {
 
   // isAdminUser, not getAdminViewer: the latter claims an unclaimed admin seat,
   // and this renders on every page.
-  const admin = await isAdminUser();
+  const [admin, orgAccount] = await Promise.all([
+    isAdminUser(),
+    isOrgAccount(),
+  ]);
 
   return (
     // Only the two fields the menu renders cross to the client — never the
@@ -43,6 +47,7 @@ async function SessionNav() {
         image: session.user.image ?? null,
       }}
       isAdmin={admin}
+      isOrgAccount={orgAccount}
     />
   );
 }

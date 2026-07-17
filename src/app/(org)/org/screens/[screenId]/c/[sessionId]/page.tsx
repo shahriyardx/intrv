@@ -9,13 +9,13 @@ import { getCandidateDetail } from "@/server/dal/org";
 import { getViewer } from "@/server/dal/session";
 
 type Props = {
-  params: Promise<{ slug: string; screenId: string; sessionId: string }>;
+  params: Promise<{ screenId: string; sessionId: string }>;
 };
 
 export const metadata: Metadata = { title: "Candidate" };
 
 export default async function CandidateDetailPage({ params }: Props) {
-  const { slug, screenId, sessionId } = await params;
+  const { screenId, sessionId } = await params;
   const viewer = await getViewer();
 
   const result = await getCandidateDetail(viewer, sessionId);
@@ -28,7 +28,7 @@ export default async function CandidateDetailPage({ params }: Props) {
       <div>
         <DataLabel>
           <Link
-            href={`/org/${slug}/screens/${screenId}` as Route}
+            href={`/org/screens/${screenId}` as Route}
             className="underline-offset-4 hover:text-foreground hover:underline"
           >
             {screen.title}
@@ -39,7 +39,7 @@ export default async function CandidateDetailPage({ params }: Props) {
           {candidate.name ?? "Anonymous candidate"}
         </h2>
         {candidate.email ? (
-          <p className="mt-1 font-mono text-xs text-muted-foreground">
+          <p className="mt-1 font-mono text-muted-foreground text-xs">
             {candidate.email}
           </p>
         ) : null}
@@ -51,7 +51,7 @@ export default async function CandidateDetailPage({ params }: Props) {
           <Stat label="Duration">{formatDuration(candidate.durationMs)}</Stat>
           <Stat label="Status">{candidate.status.toLowerCase()}</Stat>
           <div className="col-span-2 sm:col-span-3">
-            <dt className="font-mono text-[0.625rem] uppercase tracking-[0.12em] text-muted-foreground">
+            <dt className="font-mono text-[0.625rem] text-muted-foreground uppercase tracking-[0.12em]">
               Signals
             </dt>
             <dd className="mt-1.5">
@@ -75,7 +75,7 @@ function Stat({
 }) {
   return (
     <div>
-      <dt className="font-mono text-[0.625rem] uppercase tracking-[0.12em] text-muted-foreground">
+      <dt className="font-mono text-[0.625rem] text-muted-foreground uppercase tracking-[0.12em]">
         {label}
       </dt>
       <dd className="mt-1 font-mono text-lg tabular capitalize">{children}</dd>
