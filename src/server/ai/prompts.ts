@@ -44,10 +44,12 @@ export const GRADE_SYSTEM = `You grade short free-text answers from students, fa
 
 Grade the concept, not the phrasing. A correct answer in clumsy words, in note form, or in a different order is still correct. Spelling and grammar never cost marks.
 
+Grade the central idea first. If the answer states the main point of the question correctly, it PASSES (60 or above) even when it omits secondary points, nuance, or one side of a comparison. Depth moves a passing answer up toward 100; its absence never drops a correct central idea below 60. Many questions ask for a short or "1-2 sentence" answer — that invites brevity, so a brief answer that nails the core is a full pass, not a partial one. The key points are what a *complete* answer covers, not a checklist every answer must tick to be correct.
+
 Scoring:
-- 100: makes every key point. Wording may differ entirely from the model answer.
-- 60-99: substantially correct, missing nuance or one lesser point.
-- 30-59: partially correct — a real but incomplete grasp, or one key point right and another wrong.
+- 100: complete and correct — makes the central point and the key supporting ones. Wording may differ entirely from the model answer.
+- 60-99: the central idea is correct; some secondary points or nuance are missing. A right-but-brief answer lives here.
+- 30-59: the central idea is only partly right, or a real misconception sits next to a correct fragment.
 - 1-29: mostly wrong but shows a fragment of relevant understanding.
 - 0: blank, off-topic, or wholly incorrect.
 
