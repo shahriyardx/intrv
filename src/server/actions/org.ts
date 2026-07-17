@@ -17,7 +17,7 @@ import {
 import { slugify } from "@/lib/slug";
 import { AiError } from "@/server/ai/client";
 import { generateQuestions } from "@/server/ai/generate";
-import { getViewer } from "@/server/dal/session";
+import { getAuthSession, getViewer } from "@/server/dal/session";
 
 export type ActionError = { ok: false; error: string };
 
@@ -335,17 +335,6 @@ async function manageableAssessment(
   return { active: assessment.active };
 }
 
-const startAssessmentSchema = z.object({
-  candidateName: z
-    .string()
-    .trim()
-    .min(1, "Enter your name.")
-    .max(80, "Keep your name under 80 characters."),
-  candidateEmail: z
-    .email("Enter a valid email address.")
-    .max(160, "Keep your email under 160 characters."),
-});
-
 /** The frozen question set, validated on the way out of the JSON column. */
 const frozenQuestionsSchema = z.array(
   z.object({
@@ -359,27 +348,26 @@ const frozenQuestionsSchema = z.array(
 );
 
 /**
- * PUBLIC: a candidate — anonymous or signed in — starts an attempt at an assessment.
+ * A signed-in candidate starts an attempt at an assessment.
  *
- * Screens are always timed, so the deadline is set at creation. One attempt per
- * candidate is not enforceable without an identity we don't collect; the report
- * simply shows every attempt.
+ * The name and email on the report are read from the session here and are not
+ * accepted from the caller: this is a Server Function, so anything the form
+ * could send, a stranger could send too — and a typed-in name would let a
+ * candidate sit the assessment as someone else, which is the one thing a
+ * screening report has to be able to state truthfully.
+ *
+ * Assessments are always timed, so the deadline is set at creation. The report
+ * shows every attempt; repeat attempts are not blocked here.
  */
 export async function startAssessmentSession(
   token: string,
-  _prev: unknown,
-  formData: FormData,
 ): Promise<ActionError | never> {
-  const parsed = startAssessmentSchema.safeParse({
-    candidateName: String(formData.get("candidateName") ?? ""),
-    candidateEmail: String(formData.get("candidateEmail") ?? ""),
-  });
-  if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid input.",
-    };
-  }
+  const authSession = await getAuthSession();
+  const user = authSession?.user;
+
+  // The page redirects too, but a Server Function is a POST endpoint reachable
+  // directly, so it re-establishes the viewer rather than trusting that.
+  if (!user) redirect(`/sign-in?next=/i/${encodeURIComponent(token)}`);
 
   const assessment = await prisma.assessment.findFirst({
     where: { inviteToken: token, active: true },
@@ -408,19 +396,18 @@ export async function startAssessmentSession(
     };
   }
 
-  const viewer = await getViewer();
   const now = new Date();
   const timeLimitMs = assessment.timeLimitMs ?? 20 * 60_000;
 
   const session = await prisma.interviewSession.create({
     data: {
-      // A signed-in candidate keeps the attempt in their own history; an
-      // anonymous one reaches it through the session id, as everywhere else.
-      userId: viewer.kind === "user" ? viewer.userId : null,
+      userId: user.id,
       mode: "ASSESSMENT",
       assessmentId: assessment.id,
-      candidateName: parsed.data.candidateName,
-      candidateEmail: parsed.data.candidateEmail,
+      // Denormalized onto the attempt on purpose: the report must keep saying
+      // who sat it even if they later rename the account or delete it.
+      candidateName: user.name?.trim() || user.email,
+      candidateEmail: user.email,
       topic: assessment.topic,
       difficulty: assessment.difficulty,
       questionCount: frozen.data.length,

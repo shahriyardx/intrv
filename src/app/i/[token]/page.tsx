@@ -4,14 +4,15 @@ import {
   ShieldCheckIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
 import { DataLabel } from "@/components/ui/prose";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAssessmentByInviteToken } from "@/server/dal/org";
-import { StartScreenForm } from "./start-form";
+import { getAuthSession } from "@/server/dal/session";
+import { StartAssessmentForm } from "./start-form";
 
 // An invite is a private capability link, never something to index.
 export const metadata: Metadata = {
@@ -44,6 +45,14 @@ export default function InvitePage({ params }: Props) {
 
 async function Invite({ params }: Props) {
   const { token } = await params;
+
+  // Sign-in is checked before the token is looked up, so a signed-out visitor
+  // gets the same sign-in page for a real token as for a made-up one and can't
+  // use this route to test whether a token exists.
+  const authSession = await getAuthSession();
+  const user = authSession?.user;
+  if (!user) redirect(`/sign-in?next=/i/${encodeURIComponent(token)}`);
+
   const assessment = await getAssessmentByInviteToken(token);
 
   // Unknown or deactivated token: notFound() discloses nothing about which it
@@ -83,10 +92,16 @@ async function Invite({ params }: Props) {
       </dl>
 
       <div className="rounded-md border p-6">
+        {/* Say whose name lands on the report before they start, not after:
+            it's the one thing here they can't change once the timer runs. */}
         <p className="mb-5 text-sm text-muted-foreground">
-          No account needed. Enter your details and you'll go straight in.
+          {assessment.orgName} will see this attempt as{" "}
+          <strong className="font-medium text-foreground">
+            {user.name?.trim() || user.email}
+          </strong>{" "}
+          <span className="font-mono text-xs">({user.email})</span>.
         </p>
-        <StartScreenForm token={token} />
+        <StartAssessmentForm token={token} />
       </div>
     </div>
   );

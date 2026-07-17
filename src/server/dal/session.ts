@@ -1,7 +1,9 @@
 import "server-only";
+import type { Route } from "next";
 import { headers } from "next/headers";
 import { cache } from "react";
 import { auth, type Session } from "@/lib/auth";
+import { signInPath } from "@/lib/next-path";
 import type { Viewer } from "@/server/dal/owner";
 
 export {
@@ -44,3 +46,15 @@ export const getViewer = cache(async (): Promise<Viewer> => {
 
   return { kind: "anonymous" };
 });
+
+/**
+ * Where to send a signed-out visitor so that signing in returns them here.
+ *
+ * `fallback` is used when proxy.ts didn't stamp the path — it should be the
+ * gate's own route, so the redirect is merely imprecise rather than wrong.
+ */
+export async function signInHere(fallback: string): Promise<Route> {
+  // Built at runtime, so typedRoutes can't check it. safeNextPath inside
+  // signInPath is what actually constrains the value.
+  return signInPath((await headers()).get("x-pathname"), fallback) as Route;
+}

@@ -19,24 +19,6 @@ export const authClient = createAuthClient({
   ],
 });
 
-const DEFAULT_REDIRECT = "/dashboard";
-
-/**
- * `?next=` is attacker-controlled, so it is an open redirect unless it provably
- * cannot leave this origin. Only a plain absolute path survives:
- *
- * - the leading `/` rejects every scheme (`https:`, `javascript:`),
- * - `//host` and `/\host` are protocol-relative once a browser normalises them,
- * - tabs and newlines are stripped during URL parsing, so `/{tab}/host` would
- *   become `//host` after we'd already approved it. Strip them before deciding.
- */
-export function safeNextPath(next: string | null | undefined): string {
-  if (!next) return DEFAULT_REDIRECT;
-
-  const path = next.replace(/[\t\n\r]/g, "");
-
-  if (!path.startsWith("/")) return DEFAULT_REDIRECT;
-  if (path.startsWith("//") || path.startsWith("/\\")) return DEFAULT_REDIRECT;
-
-  return path;
-}
+// safeNextPath moved to lib/next-path.ts: the server-side auth gates need it
+// too, and importing this module there would drag createAuthClient with it.
+export { safeNextPath } from "@/lib/next-path";

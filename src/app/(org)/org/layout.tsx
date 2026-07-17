@@ -7,7 +7,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
 import { DataLabel } from "@/components/ui/prose";
 import { getActiveOrg } from "@/server/dal/org";
-import { getViewer } from "@/server/dal/session";
+import { getViewer, signInHere } from "@/server/dal/session";
 
 export const metadata: Metadata = {
   title: { default: "Organizations", template: "%s · Organizations · Intrv" },
@@ -35,7 +35,7 @@ export default function OrgLayout({ children }: { children: React.ReactNode }) {
 
 async function OrgShell({ children }: { children: React.ReactNode }) {
   const viewer = await getViewer();
-  if (viewer.kind !== "user") redirect("/sign-in?next=/org");
+  if (viewer.kind !== "user") redirect(await signInHere("/org"));
 
   // The org surface is for organization accounts only. A signed-in personal
   // account has no org (org creation is signup-only) and is sent to their own

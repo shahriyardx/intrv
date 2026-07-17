@@ -54,9 +54,9 @@ whether it generates live or replays a frozen set:
   JOB_DESCRIPTION and REVIEW differ from CUSTOM *only* by a `brief` fed to the
   generator (the extracted JD profile / the due-concept list) — same live path,
   not a different one.
-- **DAILY / REMATCH / SCREEN are pre-seeded.** Created `status: READY` with
+- **DAILY / REMATCH / ASSESSMENT are pre-seeded.** Created `status: READY` with
   Question rows already copied from a frozen source (`DailyChallenge.questions`,
-  the source session's questions, `Screen.questions`) and `startedAt`/`expiresAt`
+  the source session's questions, `Assessment.questions`) and `startedAt`/`expiresAt`
   set at creation. The runner's `generate` query sees `status !== GENERATING`
   and **replays from the DB** — it never calls the model. Do not "fix" one of
   these by setting it GENERATING: that regenerates and defeats the point (every
@@ -101,7 +101,7 @@ learning-loop failure must not cost the student their result. It delegates to
 - Items are keyed `@@unique([userId, topic, concept])`; the active queue is
   capped at **200** per user (`capActiveItems` retires the longest-overdue
   overflow).
-- **Anonymous and SCREEN sessions no-op** — neither feeds a signed-in user's
+- **Anonymous and ASSESSMENT sessions no-op** — neither feeds a signed-in user's
   study loop.
 
 ## Daily challenge
@@ -157,22 +157,30 @@ Screening access mirrors `/admin`'s non-disclosure doctrine: `src/server/dal/org
 resolves the viewer's `Member` role first and returns **null (→ `notFound()`),
 never a 403**, for non-members.
 
-- `Screen.questions` is the frozen set **with answer keys** → server-only. The
-  public candidate view (`getScreenByInviteToken`) never selects it.
-- **Candidates must not see their own score.** The SCREEN result page gates on
-  `getScreenGate`; only an org member sees the graded result.
+- **Candidates must sign in.** `/i/[token]` redirects a signed-out visitor to
+  `/sign-in?next=/i/<token>` **before** it looks the token up, so a stranger
+  can't use the route to test whether a token is real. `candidateName` /
+  `candidateEmail` are read from the session inside `startAssessmentSession`,
+  which takes **no FormData at all** — a typed-in name would let someone sit an
+  assessment as another person, which is the one claim the report has to be able
+  to make truthfully. They stay denormalized on the attempt so the report
+  survives a rename or a deleted account.
+- `Assessment.questions` is the frozen set **with answer keys** → server-only. The
+  candidate view (`getAssessmentByInviteToken`) never selects it.
+- **Candidates must not see their own score.** The ASSESSMENT result page gates
+  on `getAssessmentGate`; only an org member sees the graded result.
 - `integrity` (focus-loss / paste counters) is a **client-reported signal only**,
-  stored for `mode SCREEN` only, re-validated with `integritySchema` on read,
+  stored for `mode ASSESSMENT` only, re-validated with `integritySchema` on read,
   and shown only to org members.
 
 ## Leaderboard, XP & naming
 
-- **`mode SCREEN` is excluded everywhere points are computed** — a screening
+- **`mode ASSESSMENT` is excluded everywhere points are computed** — a screening
   attempt is a recruiter's private process, not play. `leaderboard.ts` is the
   source of truth (both `getLeaderboard` and `getViewerStanding` filter
-  `mode != 'SCREEN'`); the XP/streak DAL (`src/server/dal/learning.ts`) reuses
+  `mode != 'ASSESSMENT'`); the XP/streak DAL (`src/server/dal/learning.ts`) reuses
   the exported `DIFFICULTY_MULTIPLIER` so the two formulas can't drift, and
-  excludes SCREEN too.
+  excludes ASSESSMENT too.
 - **A taker is named only when `user` exists AND `!banned` AND
   `!leaderboardOptOut`** — otherwise the surface shows "Anonymous"/"Someone".
   This three-part rule is deliberately duplicated across daily standings
@@ -215,9 +223,17 @@ These are all verified against the installed packages — not guesses.
 - **`revalidateTag(tag)` needs a second arg** (a cacheLife profile) in Next 16.
   Prefer `updateTag` in Server Actions for read-your-own-writes.
 - **`middleware.ts` is now `proxy.ts`**, Node runtime, not configurable. It is
-  *not* an auth boundary — it does cosmetic redirects only. Real authorization
-  lives in the DAL and is re-checked inside every Server Action, because Server
-  Functions are POST endpoints reachable directly.
+  *not* an auth boundary and does no session work. Real authorization lives in
+  the DAL and is re-checked inside every Server Action, because Server Functions
+  are POST endpoints reachable directly. Ours does exactly one thing: stamp
+  `x-pathname` on the request so a layout's auth gate can send a signed-out
+  visitor back to the child page they asked for (a layout renders for all its
+  children and cannot otherwise know which). It **clones-then-sets**, so a
+  spoofed client `x-pathname` is overwritten — but that only holds on paths its
+  matcher covers, which is why `signInHere()` still runs the value through
+  `safeNextPath`. Redirect-target logic lives in `src/lib/next-path.ts`, kept
+  import-free (like `owner.ts`) so both the client forms and the server gates
+  share one implementation and it stays unit-testable.
 - **`forbidden()`/`unauthorized()` are experimental** (need
   `experimental.authInterrupts`). Use `redirect()`.
 - **Parallel route slots require `default.tsx`** or the build fails.

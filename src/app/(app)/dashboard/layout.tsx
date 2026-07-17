@@ -5,7 +5,7 @@ import { OrgAccountGate } from "@/components/org/org-account-gate";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
 import { DataLabel } from "@/components/ui/prose";
-import { getViewer } from "@/server/dal/session";
+import { getViewer, signInHere } from "@/server/dal/session";
 import { DashboardNav } from "./nav";
 
 export const metadata: Metadata = {
@@ -56,6 +56,8 @@ export default function DashboardLayout({
 
 async function AuthGate() {
   const viewer = await getViewer();
-  if (viewer.kind !== "user") redirect("/sign-in?next=/dashboard");
+  // The real path, not "/dashboard": this layout wraps every dashboard page, so
+  // a hardcoded target would strand someone who asked for /dashboard/review.
+  if (viewer.kind !== "user") redirect(await signInHere("/dashboard"));
   return null;
 }
