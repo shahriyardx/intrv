@@ -3,7 +3,7 @@ import {
   LightningIcon,
   TrophyIcon,
 } from "@phosphor-icons/react/dist/ssr";
-import type { Metadata } from "next";
+import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,15 @@ import {
   type LeaderboardRow,
 } from "@/server/dal/leaderboard";
 import { getViewer } from "@/server/dal/session";
+import {
+  SEASON_LABEL,
+  SEASON_PERIODS,
+  type SeasonPeriod,
+  seasonSince,
+  toSeasonPeriod,
+} from "@/server/learning/seasons";
+
+type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
 /** Stable keys: these rows are placeholders and never reorder. */
 const SKELETON_ROWS = ["a", "b", "c", "d", "e", "f", "g", "h"];
@@ -36,7 +45,11 @@ export const metadata: Metadata = {
 
 // No <main> here: the marketing layout owns it, and a second one nested inside
 // it was invalid.
-export default function LeaderboardPage() {
+export default function LeaderboardPage({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
   return (
     <>
       <DataLabel>Global</DataLabel>
@@ -82,40 +95,75 @@ export default function LeaderboardPage() {
         />
       </Link>
 
-      {/* Reads the session and the whole board — the shell above stays static. */}
+      {/* Reads searchParams, the session, and the whole board — the shell
+          above stays static, this waits on the request. */}
       <Suspense fallback={<BoardSkeleton />}>
-        <Board />
+        <Board searchParams={searchParams} />
       </Suspense>
     </>
   );
 }
 
-async function Board() {
+/** All time / This month / This week, driven by ?period= and server-rendered. */
+function SeasonTabs({ period }: { period: SeasonPeriod }) {
+  return (
+    <div className="mt-10 flex gap-1 border-b">
+      {SEASON_PERIODS.map((p) => {
+        const active = p === period;
+        const href = p === "all" ? "/leaderboard" : `/leaderboard?period=${p}`;
+        return (
+          <Link
+            key={p}
+            href={href as Route}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "-mb-px whitespace-nowrap border-b-2 px-3 py-2 font-mono text-[0.6875rem] uppercase tracking-[0.12em] transition-colors",
+              active
+                ? "border-accent text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {SEASON_LABEL[p]}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+async function Board({ searchParams }: { searchParams: SearchParams }) {
+  const period = toSeasonPeriod((await searchParams).period);
+  const since = seasonSince(period, new Date());
+
   const viewer = await getViewer();
   const [rows, standing] = await Promise.all([
-    getLeaderboard(50),
-    getViewerStanding(viewer),
+    getLeaderboard(50, since),
+    getViewerStanding(viewer, since),
   ]);
 
   if (rows.length === 0) {
     return (
-      <div className="mt-12 border p-10 text-center">
-        <TrophyIcon
-          aria-hidden
-          className="mx-auto size-6 text-muted-foreground"
-        />
-        <p className="mt-3 font-display text-display-md">Nobody yet</p>
-        <p className="mx-auto mt-2 max-w-sm text-muted-foreground text-sm">
-          Nobody has finished a graded interview while signed in. First one on
-          the board wins by default.
-        </p>
-        <Button asChild className="mt-6">
-          <Link href="/start">
-            Take the first one
-            <ArrowRightIcon className="size-4" />
-          </Link>
-        </Button>
-      </div>
+      <>
+        <SeasonTabs period={period} />
+        <div className="mt-10 border p-10 text-center">
+          <TrophyIcon
+            aria-hidden
+            className="mx-auto size-6 text-muted-foreground"
+          />
+          <p className="mt-3 font-display text-display-md">Nobody yet</p>
+          <p className="mx-auto mt-2 max-w-sm text-muted-foreground text-sm">
+            {period === "all"
+              ? "Nobody has finished a graded interview while signed in. First one on the board wins by default."
+              : `No graded interviews ${period === "week" ? "this week" : "this month"} yet. Take one and you're on the board.`}
+          </p>
+          <Button asChild className="mt-6">
+            <Link href="/start">
+              Take the first one
+              <ArrowRightIcon className="size-4" />
+            </Link>
+          </Button>
+        </div>
+      </>
     );
   }
 
@@ -126,7 +174,8 @@ async function Board() {
 
   return (
     <>
-      <Table className="mt-10">
+      <SeasonTabs period={period} />
+      <Table className="mt-6">
         <TableHeader>
           <HeadRow />
         </TableHeader>

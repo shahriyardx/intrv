@@ -1,6 +1,12 @@
 import "server-only";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import type { Viewer } from "@/server/dal/owner";
+
+/** The season window as a SQL fragment, or empty for all-time. */
+function sinceClause(since: Date | null) {
+  return since ? Prisma.sql`AND s."gradedAt" >= ${since}` : Prisma.empty;
+}
 
 /**
  * Difficulty weights. Average score alone would be topped by whoever only ever
@@ -49,7 +55,10 @@ type RawRow = {
  * user count. `banned` users are excluded: a banned account should not keep a
  * trophy on a page everyone can see.
  */
-export async function getLeaderboard(limit = 50): Promise<LeaderboardRow[]> {
+export async function getLeaderboard(
+  limit = 50,
+  since: Date | null = null,
+): Promise<LeaderboardRow[]> {
   const rows = await prisma.$queryRaw<RawRow[]>`
     SELECT
       s."userId"                                   AS "userId",
@@ -77,6 +86,7 @@ export async function getLeaderboard(limit = 50): Promise<LeaderboardRow[]> {
       AND s."mode" != 'ASSESSMENT'
       AND u."leaderboardOptOut" = false
       AND COALESCE(u."banned", false) = false
+      ${sinceClause(since)}
     GROUP BY s."userId", u."name"
     HAVING COUNT(*) >= ${MIN_SESSIONS}
     ORDER BY "points" DESC, "sessions" ASC
@@ -109,6 +119,7 @@ export type ViewerStanding = {
  */
 export async function getViewerStanding(
   viewer: Viewer,
+  since: Date | null = null,
 ): Promise<ViewerStanding | null> {
   if (viewer.kind !== "user") return null;
 
@@ -145,6 +156,7 @@ export async function getViewerStanding(
         AND s."mode" != 'ASSESSMENT'
         AND u."leaderboardOptOut" = false
         AND COALESCE(u."banned", false) = false
+        ${sinceClause(since)}
       GROUP BY s."userId"
     )
     SELECT
