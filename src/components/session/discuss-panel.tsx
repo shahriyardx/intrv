@@ -61,10 +61,15 @@ export function DiscussPanel({
     if (submitted === null) return;
     if (query.status === "success") {
       const text = reply.trim();
-      setTurns((prev) => [
-        ...prev,
-        { role: "assistant", text: text || "(no reply)" },
-      ]);
+      // An empty completion is a failure, not an answer: committing "(no reply)"
+      // as an assistant turn would also feed that placeholder back as context on
+      // the next question. Surface it as retryable and leave history clean — the
+      // student's question stays in `turns`, so Send tries again from there.
+      if (!text) {
+        setError("The tutor didn't answer that time. Try asking again.");
+      } else {
+        setTurns((prev) => [...prev, { role: "assistant", text }]);
+      }
       setSubmitted(null);
     } else if (query.status === "error") {
       setError("Couldn't reach the tutor just now. Try again.");

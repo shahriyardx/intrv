@@ -15,7 +15,7 @@ Write questions that test understanding, not recall of trivia. A good question m
 
 Rules:
 - Every question must be answerable from general knowledge of the topic. Never reference "the passage", "the diagram", or any material the student cannot see.
-- MCQ: exactly 4 options with keys A, B, C, D. Exactly one is correct. Distractors must be plausible and represent real misconceptions — never filler, never joke options, never "all of the above".
+- MCQ: exactly 4 options with keys A, B, C, D. Exactly one is correct, and the other three must be **unambiguously wrong** — each states something false. A distractor that is *true*, or that is a correct-but-less-detailed version of the right answer, breaks the question: the student picks it, is marked wrong, and is right to be angry. The correct option must be the only defensible one, not merely the most complete or best-worded. Before finalising, check every distractor and ask "could a knowledgeable person argue this is also correct?" — if yes, rewrite it so the answer is false. Distractors must still be plausible and represent real misconceptions — never filler, never joke options, never "all of the above".
 - TRUE_FALSE: state a single unambiguous claim. Avoid double negatives. Do not make every statement true.
 - SHORT_ANSWER: ask for something answerable in 1-3 sentences. Supply a concise model answer and the key points a full-credit answer must make.
 - Vary what you probe: definitions, trade-offs, failure modes, comparisons, and applications. Do not ask the same thing twice in different words.

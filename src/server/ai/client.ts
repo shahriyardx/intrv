@@ -270,7 +270,14 @@ export async function* callChatStream(
             { role: "user", content: opts.user },
           ],
           temperature: 0.6,
-          max_tokens: 500,
+          // flash is a reasoning model: it spends completion tokens on
+          // reasoning_content (which we drop) before any answer reaches
+          // delta.content. A 500 cap was consumed entirely by reasoning on all
+          // but the shortest questions — the stream finished with finish_reason
+          // "length" and zero content, which the client surfaced as
+          // "(no reply)". The budget has to cover the thinking AND the answer;
+          // a full tutor reply here measured ~600 reasoning + ~900 answer.
+          max_tokens: 2500,
           stream: true,
           // Ask DeepSeek to append a usage frame on the final chunk.
           stream_options: { include_usage: true },
