@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { DataLabel } from "@/components/ui/prose";
-import { startScreenSession } from "@/server/actions/org";
+import { startAssessmentSession } from "@/server/actions/org";
 
-// Client-side mirror of startScreenSchema — UX only; the action re-validates.
+// Client-side mirror of startAssessmentSchema — UX only; the action re-validates.
 const schema = z.object({
   candidateName: z
     .string()
@@ -52,7 +52,7 @@ export function StartScreenForm({ token }: { token: string }) {
       data.set("candidateName", values.candidateName);
       data.set("candidateEmail", values.candidateEmail);
       // Success redirects into the session; only an error object returns.
-      const result = await startScreenSession(token, null, data);
+      const result = await startAssessmentSession(token, null, data);
       if (result && !result.ok) setServerError(result.error);
     });
   });

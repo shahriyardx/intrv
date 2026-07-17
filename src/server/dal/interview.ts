@@ -33,7 +33,7 @@ export type SessionSummary = {
     | "DAILY"
     | "REVIEW"
     | "REMATCH"
-    | "SCREEN";
+    | "ASSESSMENT";
   adaptive: boolean;
   rematchOfId: string | null;
 };
@@ -122,8 +122,8 @@ export async function assertCanAccessSession(
     | "DAILY"
     | "REVIEW"
     | "REMATCH"
-    | "SCREEN";
-  screenId: string | null;
+    | "ASSESSMENT";
+  assessmentId: string | null;
 } | null> {
   const session = await prisma.interviewSession.findUnique({
     where: { id: sessionId },
@@ -134,7 +134,7 @@ export async function assertCanAccessSession(
       expiresAt: true,
       topic: true,
       mode: true,
-      screenId: true,
+      assessmentId: true,
     },
   });
 

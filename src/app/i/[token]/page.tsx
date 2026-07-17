@@ -10,7 +10,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
 import { DataLabel } from "@/components/ui/prose";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getScreenByInviteToken } from "@/server/dal/org";
+import { getAssessmentByInviteToken } from "@/server/dal/org";
 import { StartScreenForm } from "./start-form";
 
 // An invite is a private capability link, never something to index.
@@ -44,34 +44,41 @@ export default function InvitePage({ params }: Props) {
 
 async function Invite({ params }: Props) {
   const { token } = await params;
-  const screen = await getScreenByInviteToken(token);
+  const assessment = await getAssessmentByInviteToken(token);
 
   // Unknown or deactivated token: notFound() discloses nothing about which it
   // was, or whether the link was ever real.
-  if (!screen) notFound();
+  if (!assessment) notFound();
 
-  const minutes = screen.timeLimitMs ? screen.timeLimitMs / 60_000 : null;
+  const minutes = assessment.timeLimitMs
+    ? assessment.timeLimitMs / 60_000
+    : null;
 
   return (
     <div className="space-y-10">
       <div>
-        <DataLabel>{screen.orgName} · Screening</DataLabel>
-        <h1 className="mt-2 font-display text-display-lg">{screen.title}</h1>
+        <DataLabel>{assessment.orgName} · Screening</DataLabel>
+        <h1 className="mt-2 font-display text-display-lg">
+          {assessment.title}
+        </h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          {screen.orgName} invited you to take a short screening interview on{" "}
-          {screen.topic}. Answer in one sitting — the timer runs once you start.
+          {assessment.orgName} invited you to take a short screening interview
+          on {assessment.topic}. Answer in one sitting — the timer runs once you
+          start.
         </p>
       </div>
 
       <dl className="grid grid-cols-3 gap-4 border-y py-5">
         <Fact icon={<ListNumbersIcon weight="duotone" />} label="Questions">
-          {screen.questionCount}
+          {assessment.questionCount}
         </Fact>
         <Fact icon={<ClockIcon weight="duotone" />} label="Time limit">
           {minutes ? `${minutes} min` : "Untimed"}
         </Fact>
         <Fact icon={<ShieldCheckIcon weight="duotone" />} label="Difficulty">
-          <span className="capitalize">{screen.difficulty.toLowerCase()}</span>
+          <span className="capitalize">
+            {assessment.difficulty.toLowerCase()}
+          </span>
         </Fact>
       </dl>
 

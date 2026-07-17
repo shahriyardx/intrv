@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChallengeFriendButton } from "@/components/challenge/challenge-friend-button";
 import { RematchBanner } from "@/components/challenge/rematch-banner";
-import { ScreenSubmitted } from "@/components/org/screen-submitted";
+import { AssessmentSubmitted } from "@/components/org/assessment-submitted";
 import { ResultView } from "@/components/session/result-view";
 import { PdfButton } from "@/components/share/pdf-button";
 import { PrintHeader } from "@/components/share/print-header";
@@ -12,7 +12,7 @@ import { SiteNav } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
 import { DataLabel } from "@/components/ui/prose";
 import { getAccessibleSession } from "@/server/dal/interview";
-import { getScreenGate } from "@/server/dal/org";
+import { getAssessmentGate } from "@/server/dal/org";
 import { getViewer } from "@/server/dal/session";
 import { ShareButton } from "./share-button";
 
@@ -34,9 +34,9 @@ export default async function ResultPage(props: {
   if (session.status !== "GRADED") redirect(`/s/${sessionId}`);
 
   // Screening attempts belong to the org's process: the candidate gets a
-  // receipt, only the screen's org members see the graded result.
-  if (session.mode === "SCREEN") {
-    const gate = await getScreenGate(viewer, sessionId);
+  // receipt, only the assessment's org members see the graded result.
+  if (session.mode === "ASSESSMENT") {
+    const gate = await getAssessmentGate(viewer, sessionId);
     if (!gate.viewable) {
       return (
         <>
@@ -44,7 +44,7 @@ export default async function ResultPage(props: {
             <SiteNav />
           </SiteHeader>
           <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-            <ScreenSubmitted orgName={gate.orgName} />
+            <AssessmentSubmitted orgName={gate.orgName} />
           </main>
         </>
       );

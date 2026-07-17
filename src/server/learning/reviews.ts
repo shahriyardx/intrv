@@ -41,7 +41,7 @@ export async function scheduleReviews(sessionId: string): Promise<void> {
   });
 
   if (!session || session.userId === null) return;
-  if (session.mode === "SCREEN") return;
+  if (session.mode === "ASSESSMENT") return;
 
   const userId = session.userId;
   const now = new Date();

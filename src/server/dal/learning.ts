@@ -133,7 +133,7 @@ export type Momentum = {
  * user's history, so this is not the "load the whole table" hazard the public
  * leaderboard guards against. XP reuses DIFFICULTY_MULTIPLIER exported from
  * leaderboard.ts so the two formulas can never drift; SCREEN sessions are
- * excluded because a candidate screen is not the user's own study.
+ * excluded because a candidate assessment is not the user's own study.
  */
 export async function getMomentum(viewer: Viewer): Promise<Momentum> {
   const owner = ownerWhere(viewer);
@@ -145,7 +145,7 @@ export async function getMomentum(viewer: Viewer): Promise<Momentum> {
       status: "GRADED",
       score: { not: null },
       gradedAt: { not: null },
-      mode: { not: "SCREEN" },
+      mode: { not: "ASSESSMENT" },
     },
     select: {
       gradedAt: true,
@@ -232,7 +232,7 @@ type TopicRow = {
  * has to be unnested one row per (question, concept) pair, and the score lives
  * on Answer while the tag lives on Question — a join Prisma's groupBy cannot
  * express. userId is a bound parameter; nothing user-typed is concatenated.
- * SCREEN sessions are excluded — a screen is not the user's own study record.
+ * SCREEN sessions are excluded — an assessment is not the user's own study record.
  */
 export async function getMastery(viewer: Viewer): Promise<Mastery> {
   const owner = ownerWhere(viewer);
@@ -252,7 +252,7 @@ export async function getMastery(viewer: Viewer): Promise<Mastery> {
       CROSS JOIN LATERAL unnest(q.concepts) AS c(concept)
       WHERE s."userId" = ${owner.userId}
         AND s.status = 'GRADED'
-        AND s.mode <> 'SCREEN'
+        AND s.mode <> 'ASSESSMENT'
         AND a.score IS NOT NULL
       GROUP BY c.concept
       ORDER BY (COUNT(*) FILTER (WHERE a.score >= ${CORRECT_AT})::float8 / COUNT(*)) ASC,
@@ -272,7 +272,7 @@ export async function getMastery(viewer: Viewer): Promise<Mastery> {
       LEFT JOIN LATERAL unnest(q.concepts) AS c(concept) ON true
       WHERE s."userId" = ${owner.userId}
         AND s.status = 'GRADED'
-        AND s.mode <> 'SCREEN'
+        AND s.mode <> 'ASSESSMENT'
         AND a.score IS NOT NULL
       GROUP BY s.topic
       ORDER BY (COUNT(*) FILTER (WHERE a.score >= ${CORRECT_AT})::float8 / COUNT(*)) ASC,

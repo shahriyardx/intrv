@@ -155,8 +155,8 @@ enum SessionMode {
   REVIEW
   /// A clone of another session's questions, taken via its share link.
   REMATCH
-  /// A candidate attempt at an organization's Screen.
-  SCREEN
+  /// A candidate attempt at an organization's Assessment.
+  ASSESSMENT
 }
 
 /// An attempt at a quiz/interview.
@@ -199,12 +199,12 @@ model InterviewSession {
   dailyChallengeId String?
   /// REMATCH: the session whose question set this one cloned.
   rematchOfId      String?
-  /// SCREEN: the org screen this candidate attempt belongs to.
-  screenId         String?
+  /// ASSESSMENT: the org assessment this candidate attempt belongs to.
+  assessmentId     String?
   candidateName    String?  @db.VarChar(80)
   candidateEmail   String?  @db.VarChar(160)
-  /// Focus-loss/paste counters, captured for SCREEN sessions only and shown
-  /// only to the screen's organization.
+  /// Focus-loss/paste counters, captured for ASSESSMENT sessions only and shown
+  /// only to the assessment's organization.
   integrity        Json?    @db.JsonB
 
   createdAt   DateTime      @default(now()) @db.Timestamptz(3)
@@ -217,12 +217,12 @@ model InterviewSession {
   dailyChallenge DailyChallenge?    @relation(fields: [dailyChallengeId], references: [id], onDelete: SetNull)
   rematchOf      InterviewSession?  @relation("Rematch", fields: [rematchOfId], references: [id], onDelete: SetNull)
   rematches      InterviewSession[] @relation("Rematch")
-  screen         Screen?            @relation(fields: [screenId], references: [id], onDelete: Cascade)
+  assessment     Assessment?        @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([status])
   @@index([dailyChallengeId, score(sort: Desc)])
-  @@index([screenId, createdAt(sort: Desc)])
+  @@index([assessmentId, createdAt(sort: Desc)])
   @@map("interview_session")
 }
 
@@ -351,11 +351,11 @@ model DailyChallenge {
 }
 
 // ---------------------------------------------------------------------------
-// Organizations & screening
+// Organizations & assessments
 // ---------------------------------------------------------------------------
 
 /// Owned by the better-auth `organization` plugin. Its columns (name, slug,
-/// logo, metadata, createdAt) are written by better-auth; `screens` is ours.
+/// logo, metadata, createdAt) are written by better-auth; `assessments` is ours.
 /// There is no `ownerId` — ownership is the Member with role "owner" that the
 /// plugin creates for the creator. The "3 owned orgs" cap is enforced in the
 /// action by counting owner-role memberships.
@@ -370,7 +370,7 @@ model Organization {
 
   members     Member[]
   invitations Invitation[]
-  screens     Screen[]
+  assessments Assessment[]
 
   @@map("organization")
 }
@@ -415,7 +415,7 @@ model Invitation {
 
 /// A screening interview an organization sends to candidates. The question set
 /// is generated once and frozen so every candidate answers the identical set.
-model Screen {
+model Assessment {
   id            String     @id @default(uuid())
   orgId         String
   title         String     @db.VarChar(120)
@@ -429,7 +429,7 @@ model Screen {
   /// Capability token for the public invite link. Unguessable; rotating it
   /// revokes every outstanding invite at once.
   inviteToken   String     @unique
-  /// Inactive screens refuse new candidates but keep their reports.
+  /// Inactive assessments refuse new candidates but keep their reports.
   active        Boolean    @default(true)
   createdById   String?
   createdAt     DateTime   @default(now()) @db.Timestamptz(3)
@@ -439,7 +439,7 @@ model Screen {
   sessions     InterviewSession[]
 
   @@index([orgId, createdAt(sort: Desc)])
-  @@map("screen")
+  @@map("assessment")
 }
 
 // ---------------------------------------------------------------------------

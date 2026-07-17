@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
  *
  * `tone` is for a number that is itself the bad news (a failure rate, a
  * collapsed cache ratio). The warning tone renders its own icon and a
- * screen-reader prefix here rather than trusting each caller to add one: a red
+ * assessment-reader prefix here rather than trusting each caller to add one: a red
  * number and a black one are the same number to a reader who cannot tell them
  * apart, so colour is never allowed to be the only signal.
  */

@@ -31,7 +31,7 @@ export const SESSION_MODES = [
   "DAILY",
   "REVIEW",
   "REMATCH",
-  "SCREEN",
+  "ASSESSMENT",
 ] as const;
 export const sessionModeSchema = z.enum(SESSION_MODES);
 export type SessionMode = z.infer<typeof sessionModeSchema>;

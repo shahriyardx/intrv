@@ -16,7 +16,7 @@ import {
   type QuestionType,
   questionTypeSchema,
 } from "@/lib/schemas";
-import { createScreen } from "@/server/actions/org";
+import { createAssessment } from "@/server/actions/org";
 
 const TYPE_LABELS: Record<QuestionType, string> = {
   MCQ: "Multiple choice",
@@ -35,13 +35,13 @@ const DIFFICULTY_HINTS: Record<Difficulty, string> = {
 const SCREEN_COUNTS = [5, 10, 15, 20] as const;
 const SCREEN_TIMES = [10, 20, 30, 45] as const;
 
-// Client-side mirror of createScreenSchema in the action — UX only; the action
+// Client-side mirror of createAssessmentSchema in the action — UX only; the action
 // re-validates with its own schema, which stays the security boundary.
 const schema = z.object({
   title: z
     .string()
     .trim()
-    .min(2, "Give the screen a title of at least 2 characters.")
+    .min(2, "Give the assessment a title of at least 2 characters.")
     .max(120, "Keep the title under 120 characters."),
   topic: z
     .string()
@@ -62,10 +62,10 @@ type Values = z.infer<typeof schema>;
 /**
  * Generation is synchronous and can take a minute or two, so the pending state
  * has to be patient and explicit — a bare spinner would read as stuck. On
- * success the action redirects to the new screen; it only returns here to
+ * success the action redirects to the new assessment; it only returns here to
  * report an error.
  */
-export function NewScreenForm({ orgId }: { orgId: string }) {
+export function NewAssessmentForm({ orgId }: { orgId: string }) {
   // reactCompiler breaks RHF v7's formState Proxy subscription — opt out.
   "use no memo";
   const form = useForm<Values>({
@@ -94,7 +94,7 @@ export function NewScreenForm({ orgId }: { orgId: string }) {
       data.set("questionCount", String(values.questionCount));
       data.set("timeLimitMinutes", String(values.timeLimitMinutes));
       // Success redirects (throws NEXT_REDIRECT); only an error object returns.
-      const result = await createScreen(orgId, null, data);
+      const result = await createAssessment(orgId, null, data);
       if (result && !result.ok) setServerError(result.error);
     });
   });
@@ -118,7 +118,7 @@ export function NewScreenForm({ orgId }: { orgId: string }) {
       <Field className="gap-3">
         <Row label="Title" hint="What candidates and your team will see.">
           <Input
-            id="screen-title"
+            id="assessment-title"
             maxLength={120}
             autoFocus
             placeholder="e.g. Frontend Engineer — first round"
@@ -133,7 +133,7 @@ export function NewScreenForm({ orgId }: { orgId: string }) {
       <Field className="gap-3">
         <Row label="Topic" hint="What the questions are about.">
           <Input
-            id="screen-topic"
+            id="assessment-topic"
             maxLength={120}
             placeholder="e.g. React, TypeScript, and web performance"
             aria-invalid={errors.topic ? true : undefined}

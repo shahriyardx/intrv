@@ -9,9 +9,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { ScreenRow } from "@/server/dal/org";
+import type { AssessmentRow } from "@/server/dal/org";
 
-export function ScreensTable({ screens }: { screens: ScreenRow[] }) {
+export function AssessmentsTable({
+  assessments,
+}: {
+  assessments: AssessmentRow[];
+}) {
   return (
     <Table>
       <TableHeader>
@@ -25,36 +29,36 @@ export function ScreensTable({ screens }: { screens: ScreenRow[] }) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {screens.map((screen) => (
-          <TableRow key={screen.id}>
+        {assessments.map((assessment) => (
+          <TableRow key={assessment.id}>
             <TableCell className="max-w-56 truncate">
               <Link
-                href={`/org/screens/${screen.id}` as Route}
+                href={`/org/assessments/${assessment.id}` as Route}
                 className="underline-offset-4 hover:underline"
               >
-                {screen.title}
+                {assessment.title}
               </Link>
             </TableCell>
             <TableCell className="max-w-40 truncate text-muted-foreground">
-              {screen.topic}
+              {assessment.topic}
             </TableCell>
             <TableCell className="text-muted-foreground capitalize">
-              {screen.difficulty.toLowerCase()}
+              {assessment.difficulty.toLowerCase()}
             </TableCell>
             <TableCell className="text-right font-mono tabular">
-              {screen.candidateCount}
+              {assessment.candidateCount}
             </TableCell>
             <TableCell className="text-right font-mono tabular">
-              {screen.avgScore === null
+              {assessment.avgScore === null
                 ? "—"
-                : `${Math.round(screen.avgScore)}%`}
+                : `${Math.round(assessment.avgScore)}%`}
             </TableCell>
             <TableCell>
               <Badge
-                variant={screen.active ? "secondary" : "outline"}
+                variant={assessment.active ? "secondary" : "outline"}
                 className="text-[0.625rem]"
               >
-                {screen.active ? "active" : "closed"}
+                {assessment.active ? "active" : "closed"}
               </Badge>
             </TableCell>
           </TableRow>

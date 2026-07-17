@@ -1,11 +1,11 @@
 import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { NewScreenForm } from "@/components/org/new-screen-form";
+import { NewAssessmentForm } from "@/components/org/new-assessment-form";
 import { DataLabel } from "@/components/ui/prose";
 import { getActiveOrg } from "@/server/dal/org";
 
-export const metadata: Metadata = { title: "New screen" };
+export const metadata: Metadata = { title: "New assessment" };
 
 export default async function NewScreenPage() {
   const org = await getActiveOrg();
@@ -22,7 +22,7 @@ export default async function NewScreenPage() {
         >
           {org.name}
         </Link>{" "}
-        / New screen
+        / New assessment
       </DataLabel>
       <h2 className="mt-2 font-display text-display-lg">
         Create a screening interview
@@ -33,7 +33,7 @@ export default async function NewScreenPage() {
         come in.
       </p>
       <div className="mt-10">
-        <NewScreenForm orgId={org.id} />
+        <NewAssessmentForm orgId={org.id} />
       </div>
     </div>
   );

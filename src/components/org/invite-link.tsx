@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 /**
- * The public capability link for a screen. The full URL is built server-side
+ * The public capability link for an assessment. The full URL is built server-side
  * from BETTER_AUTH_URL and passed in, so the link a recruiter copies is the
  * deployment's real origin — not whatever host this admin page happens to be
  * open on.

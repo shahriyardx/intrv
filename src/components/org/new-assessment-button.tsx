@@ -10,15 +10,15 @@ import { Button } from "@/components/ui/button";
  * Lives in the org header, so it needs to know when it would be pointing at the
  * page you are already on — hence a client component for the pathname alone.
  */
-export function NewScreenButton() {
+export function NewAssessmentButton() {
   const pathname = usePathname();
-  if (pathname === "/org/screens/new") return null;
+  if (pathname === "/org/assessments/new") return null;
 
   return (
     <Button asChild size="sm">
-      <Link href={"/org/screens/new" as Route}>
+      <Link href={"/org/assessments/new" as Route}>
         <PlusIcon className="size-4" />
-        New screen
+        New assessment
       </Link>
     </Button>
   );

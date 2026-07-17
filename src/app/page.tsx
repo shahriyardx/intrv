@@ -37,7 +37,7 @@ const STEPS = [
   {
     n: "02",
     title: "Answer as they arrive",
-    body: "Questions stream in as they're written, so the first one is on screen in seconds while the rest are still being generated.",
+    body: "Questions stream in as they're written, so the first one is on assessment in seconds while the rest are still being generated.",
     aside: "No waiting on a loading bar.",
   },
   {
@@ -536,7 +536,7 @@ export default function Home() {
                 id="teams"
                 className="mt-4 font-display text-display-lg text-balance"
               >
-                Screen candidates without the setup tax
+                Assessment candidates without the setup tax
               </h2>
               <Prose className="mt-6 text-muted-foreground">
                 <p>
@@ -557,7 +557,7 @@ export default function Home() {
               <div className="bg-background p-6">
                 <BuildingsIcon className="size-5 text-muted-foreground" />
                 <dt className="mt-4 text-sm font-medium">
-                  One link per screen
+                  One link per assessment
                 </dt>
                 <dd className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
                   Everyone gets the identical question set. The candidate needs

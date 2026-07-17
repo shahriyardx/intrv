@@ -10,10 +10,10 @@ import { getAuthSession } from "@/server/dal/session";
 /**
  * Membership-checked reads for the organizations surface.
  *
- * Every function that touches an org, a screen, or a candidate resolves the
+ * Every function that touches an org, an assessment, or a candidate resolves the
  * viewer's role in the owning org first, and returns null (never a 403) when
  * they are not a member — the same non-disclosure doctrine as /admin: a
- * stranger who guesses a slug or a screen id learns nothing about whether it
+ * stranger who guesses a slug or an assessment id learns nothing about whether it
  * exists.
  *
  * Candidate name/email are PII and the frozen question set carries answer keys;
@@ -101,7 +101,7 @@ export async function isOrgAccount(): Promise<boolean> {
   return (await getActiveOrg()) !== null;
 }
 
-export type ScreenRow = {
+export type AssessmentRow = {
   id: string;
   title: string;
   topic: string;
@@ -115,16 +115,16 @@ export type ScreenRow = {
 };
 
 /**
- * The org's screens with per-screen candidate counts and average score.
+ * The org's assessments with per-assessment candidate counts and average score.
  * Membership is re-checked here rather than trusted from the caller.
  */
-export async function listScreens(
+export async function listAssessments(
   viewer: Viewer,
   orgId: string,
-): Promise<ScreenRow[]> {
+): Promise<AssessmentRow[]> {
   if (!(await orgRole(viewer, orgId))) return [];
 
-  const screens = await prisma.screen.findMany({
+  const assessments = await prisma.assessment.findMany({
     where: { orgId },
     orderBy: { createdAt: "desc" },
     select: {
@@ -138,22 +138,22 @@ export async function listScreens(
     },
   });
 
-  if (screens.length === 0) return [];
+  if (assessments.length === 0) return [];
 
   const stats = await prisma.interviewSession.groupBy({
-    by: ["screenId"],
-    where: { screenId: { in: screens.map((s) => s.id) } },
+    by: ["assessmentId"],
+    where: { assessmentId: { in: assessments.map((s) => s.id) } },
     _count: { _all: true },
     // Prisma averages only non-null scores, so this is the graded-attempt mean.
     _avg: { score: true },
   });
 
-  const byScreen = new Map(stats.map((s) => [s.screenId, s]));
+  const byScreen = new Map(stats.map((s) => [s.assessmentId, s]));
 
-  return screens.map((screen) => {
-    const stat = byScreen.get(screen.id);
+  return assessments.map((assessment) => {
+    const stat = byScreen.get(assessment.id);
     return {
-      ...screen,
+      ...assessment,
       candidateCount: stat?._count._all ?? 0,
       avgScore:
         stat?._avg.score === null || stat?._avg.score === undefined
@@ -175,8 +175,8 @@ export type CandidateRow = {
   integrity: { blurs: number; pastes: number } | null;
 };
 
-export type ScreenReport = {
-  screen: {
+export type AssessmentReport = {
+  assessment: {
     id: string;
     title: string;
     topic: string;
@@ -185,21 +185,19 @@ export type ScreenReport = {
     timeLimitMs: number | null;
     active: boolean;
     inviteToken: string;
-    orgName: string;
-    orgSlug: string;
   };
   /** owner/admin may toggle and rotate; a plain member reads only. */
   canManage: boolean;
   candidates: CandidateRow[];
 };
 
-/** A screen and every candidate attempt at it, for org members. */
-export async function getScreenReport(
+/** An assessment and every candidate attempt at it, for org members. */
+export async function getAssessmentReport(
   viewer: Viewer,
-  screenId: string,
-): Promise<ScreenReport | null> {
-  const screen = await prisma.screen.findUnique({
-    where: { id: screenId },
+  assessmentId: string,
+): Promise<AssessmentReport | null> {
+  const assessment = await prisma.assessment.findUnique({
+    where: { id: assessmentId },
     select: {
       id: true,
       title: true,
@@ -210,17 +208,16 @@ export async function getScreenReport(
       active: true,
       inviteToken: true,
       orgId: true,
-      organization: { select: { name: true, slug: true } },
     },
   });
 
-  if (!screen) return null;
+  if (!assessment) return null;
 
-  const role = await orgRole(viewer, screen.orgId);
+  const role = await orgRole(viewer, assessment.orgId);
   if (!role) return null;
 
   const sessions = await prisma.interviewSession.findMany({
-    where: { screenId },
+    where: { assessmentId },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -235,17 +232,15 @@ export async function getScreenReport(
   });
 
   return {
-    screen: {
-      id: screen.id,
-      title: screen.title,
-      topic: screen.topic,
-      difficulty: screen.difficulty,
-      questionCount: screen.questionCount,
-      timeLimitMs: screen.timeLimitMs,
-      active: screen.active,
-      inviteToken: screen.inviteToken,
-      orgName: screen.organization.name,
-      orgSlug: screen.organization.slug,
+    assessment: {
+      id: assessment.id,
+      title: assessment.title,
+      topic: assessment.topic,
+      difficulty: assessment.difficulty,
+      questionCount: assessment.questionCount,
+      timeLimitMs: assessment.timeLimitMs,
+      active: assessment.active,
+      inviteToken: assessment.inviteToken,
     },
     canManage: role === "owner" || role === "admin",
     candidates: sessions.map((s) => ({
@@ -273,7 +268,7 @@ export type CandidateDetail = {
     durationMs: number | null;
     integrity: { blurs: number; pastes: number } | null;
   };
-  screen: { id: string; title: string; orgName: string; orgSlug: string };
+  assessment: { id: string; title: string; orgName: string; orgSlug: string };
 };
 
 /**
@@ -307,7 +302,7 @@ export async function getCandidateDetail(
       startedAt: true,
       submittedAt: true,
       integrity: true,
-      screen: {
+      assessment: {
         select: {
           id: true,
           title: true,
@@ -319,9 +314,9 @@ export async function getCandidateDetail(
     },
   });
 
-  if (!session || !session.screen) return null;
+  if (!session || !session.assessment) return null;
 
-  const role = await orgRole(viewer, session.screen.orgId);
+  const role = await orgRole(viewer, session.assessment.orgId);
   if (!role) return null;
 
   const revealAnswers = session.status === "GRADED";
@@ -358,16 +353,16 @@ export async function getCandidateDetail(
           : null,
       integrity: parseIntegrity(session.integrity),
     },
-    screen: {
-      id: session.screen.id,
-      title: session.screen.title,
-      orgName: session.screen.organization.name,
-      orgSlug: session.screen.organization.slug,
+    assessment: {
+      id: session.assessment.id,
+      title: session.assessment.title,
+      orgName: session.assessment.organization.name,
+      orgSlug: session.assessment.organization.slug,
     },
   };
 }
 
-export type PublicScreen = {
+export type PublicAssessment = {
   orgName: string;
   title: string;
   topic: string;
@@ -377,14 +372,14 @@ export type PublicScreen = {
 };
 
 /**
- * The candidate-facing view of an invite. Public, and active screens only —
+ * The candidate-facing view of an invite. Public, and active assessments only —
  * the questions JSON is never selected here, so no answer key can leak to an
  * unauthenticated visitor. Unknown or deactivated token returns null.
  */
-export async function getScreenByInviteToken(
+export async function getAssessmentByInviteToken(
   token: string,
-): Promise<PublicScreen | null> {
-  const screen = await prisma.screen.findFirst({
+): Promise<PublicAssessment | null> {
+  const assessment = await prisma.assessment.findFirst({
     where: { inviteToken: token, active: true },
     select: {
       title: true,
@@ -396,20 +391,20 @@ export async function getScreenByInviteToken(
     },
   });
 
-  if (!screen) return null;
+  if (!assessment) return null;
 
   return {
-    orgName: screen.organization.name,
-    title: screen.title,
-    topic: screen.topic,
-    difficulty: screen.difficulty,
-    questionCount: screen.questionCount,
-    timeLimitMs: screen.timeLimitMs,
+    orgName: assessment.organization.name,
+    title: assessment.title,
+    topic: assessment.topic,
+    difficulty: assessment.difficulty,
+    questionCount: assessment.questionCount,
+    timeLimitMs: assessment.timeLimitMs,
   };
 }
 
-/** True when the viewer is a member of the org that owns the screen session. */
-export async function isScreenSessionViewableBy(
+/** True when the viewer is a member of the org that owns the assessment session. */
+export async function isAssessmentSessionViewableBy(
   viewer: Viewer,
   sessionId: string,
 ): Promise<boolean> {
@@ -417,11 +412,11 @@ export async function isScreenSessionViewableBy(
 
   const session = await prisma.interviewSession.findUnique({
     where: { id: sessionId },
-    select: { screen: { select: { orgId: true } } },
+    select: { assessment: { select: { orgId: true } } },
   });
 
-  if (!session?.screen) return false;
-  return (await orgRole(viewer, session.screen.orgId)) !== null;
+  if (!session?.assessment) return false;
+  return (await orgRole(viewer, session.assessment.orgId)) !== null;
 }
 
 /**
@@ -429,26 +424,27 @@ export async function isScreenSessionViewableBy(
  * graded result, and the org name to show them if not. Bundled so the result
  * page needs one call rather than two.
  */
-export async function getScreenGate(
+export async function getAssessmentGate(
   viewer: Viewer,
   sessionId: string,
 ): Promise<{ orgName: string; viewable: boolean }> {
   const session = await prisma.interviewSession.findUnique({
     where: { id: sessionId },
     select: {
-      screen: {
+      assessment: {
         select: { orgId: true, organization: { select: { name: true } } },
       },
     },
   });
 
-  if (!session?.screen) return { orgName: "the organization", viewable: false };
+  if (!session?.assessment)
+    return { orgName: "the organization", viewable: false };
 
   const viewable =
     viewer.kind === "user" &&
-    (await orgRole(viewer, session.screen.orgId)) !== null;
+    (await orgRole(viewer, session.assessment.orgId)) !== null;
 
-  return { orgName: session.screen.organization.name, viewable };
+  return { orgName: session.assessment.organization.name, viewable };
 }
 
 /** Integrity is a client-reported JSON blob; validate before trusting it. */

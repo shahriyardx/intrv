@@ -3,10 +3,10 @@ import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SectionHeading } from "@/components/admin/section-heading";
-import { ScreensTable } from "@/components/org/screens-table";
+import { AssessmentsTable } from "@/components/org/assessments-table";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { getActiveOrg, listScreens } from "@/server/dal/org";
+import { getActiveOrg, listAssessments } from "@/server/dal/org";
 import { getViewer } from "@/server/dal/session";
 
 export const metadata: Metadata = { title: "Screens" };
@@ -16,29 +16,31 @@ export default async function OrgScreensPage() {
   if (!org) redirect("/dashboard");
 
   const viewer = await getViewer();
-  const screens = await listScreens(viewer, org.id);
+  const assessments = await listAssessments(viewer, org.id);
   const canManage = org.role === "owner" || org.role === "admin";
 
   return (
     <div className="space-y-6">
-      {/* No New screen button here: the org header carries it on every page. */}
-      <SectionHeading label="Screens" title="Every screen" />
+      {/* No New assessment button here: the org header carries it on every page. */}
+      <SectionHeading label="Screens" title="Every assessment" />
 
-      {screens.length === 0 ? (
+      {assessments.length === 0 ? (
         <EmptyState
           icon={<FileTextIcon weight="duotone" />}
-          title="No screens yet"
-          description="A screen is a frozen interview you send to candidates. Every candidate answers the identical set, so their scores are comparable."
+          title="No assessments yet"
+          description="An assessment is a frozen interview you send to candidates. Every candidate answers the identical set, so their scores are comparable."
           action={
             canManage ? (
               <Button asChild>
-                <Link href={"/org/screens/new" as Route}>Create a screen</Link>
+                <Link href={"/org/assessments/new" as Route}>
+                  Create an assessment
+                </Link>
               </Button>
             ) : undefined
           }
         />
       ) : (
-        <ScreensTable screens={screens} />
+        <AssessmentsTable assessments={assessments} />
       )}
     </div>
   );

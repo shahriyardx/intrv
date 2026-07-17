@@ -21,7 +21,7 @@ describe("median", () => {
   });
 
   it("returns null rather than NaN for an empty cohort", () => {
-    // A screen with no graded attempts must render an em dash, not NaN%.
+    // An assessment with no graded attempts must render an em dash, not NaN%.
     expect(median([])).toBeNull();
   });
 });

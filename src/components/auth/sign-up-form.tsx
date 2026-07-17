@@ -201,7 +201,7 @@ export function SignUpForm({
               value="org"
               icon={<BuildingsIcon weight="duotone" className="size-4" />}
               title="Organization"
-              blurb="Screen candidates with frozen interviews and reports."
+              blurb="Assessment candidates with frozen interviews and reports."
               register={form.register("accountType")}
             />
           </div>

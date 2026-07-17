@@ -144,10 +144,12 @@ export async function submitSession(
     return { ok: false, error: "This session can't be submitted yet." };
   }
 
-  // Integrity counters are only meaningful (and only stored) for org screens —
+  // Integrity counters are only meaningful (and only stored) for org assessments —
   // recording them for regular practice would be surveillance for no reader.
   const parsedIntegrity =
-    session.screenId && integrity ? integritySchema.safeParse(integrity) : null;
+    session.assessmentId && integrity
+      ? integritySchema.safeParse(integrity)
+      : null;
 
   await prisma.interviewSession.update({
     where: { id: sessionId },

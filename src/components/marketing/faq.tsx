@@ -30,7 +30,7 @@ const FAQS = [
   },
   {
     q: "How long does it take to start?",
-    a: "Seconds. Questions stream in as they're written, so the first one is on screen and answerable while the rest are still being generated.",
+    a: "Seconds. Questions stream in as they're written, so the first one is on assessment and answerable while the rest are still being generated.",
   },
 ];
 

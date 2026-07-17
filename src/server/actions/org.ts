@@ -134,11 +134,11 @@ async function uniqueSlug(name: string): Promise<string> {
 const SCREEN_QUESTION_COUNTS = [5, 10, 15, 20] as const;
 const SCREEN_TIME_LIMITS = [10, 20, 30, 45] as const;
 
-const createScreenSchema = z.object({
+const createAssessmentSchema = z.object({
   title: z
     .string()
     .trim()
-    .min(2, "Give the screen a title of at least 2 characters.")
+    .min(2, "Give the assessment a title of at least 2 characters.")
     .max(120, "Keep the title under 120 characters."),
   topic: topicSchema,
   difficulty: difficultySchema,
@@ -160,7 +160,7 @@ const createScreenSchema = z.object({
     .max(3),
 });
 
-export async function createScreen(
+export async function createAssessment(
   orgId: string,
   _prev: unknown,
   formData: FormData,
@@ -168,7 +168,7 @@ export async function createScreen(
   const viewer = await getViewer();
   if (viewer.kind !== "user") redirect("/sign-in?next=/org");
 
-  // Re-check role in the DB: owner/admin may author screens, a plain member
+  // Re-check role in the DB: owner/admin may author assessments, a plain member
   // may not.
   const membership = await prisma.member.findUnique({
     where: {
@@ -182,11 +182,11 @@ export async function createScreen(
   ) {
     return {
       ok: false,
-      error: "You don't have permission to create screens here.",
+      error: "You don't have permission to create assessments here.",
     };
   }
 
-  const parsed = createScreenSchema.safeParse({
+  const parsed = createAssessmentSchema.safeParse({
     title: String(formData.get("title") ?? ""),
     topic: String(formData.get("topic") ?? ""),
     difficulty: String(formData.get("difficulty") ?? "MEDIUM"),
@@ -203,7 +203,7 @@ export async function createScreen(
   const input = parsed.data;
 
   // Generate synchronously and freeze: every candidate must answer the
-  // identical set, so it is written once, here, and stored on the screen.
+  // identical set, so it is written once, here, and stored on the assessment.
   let generated: Awaited<ReturnType<typeof generateQuestions>>;
   try {
     generated = await generateQuestions({
@@ -243,7 +243,7 @@ export async function createScreen(
   // Unguessable: the invite link is public, so the token is its only credential.
   const inviteToken = randomBytes(12).toString("base64url");
 
-  const screen = await prisma.screen.create({
+  const assessment = await prisma.assessment.create({
     data: {
       orgId,
       title: input.title,
@@ -259,20 +259,20 @@ export async function createScreen(
     select: { id: true },
   });
 
-  redirect(`/org/screens/${screen.id}` as Route);
+  redirect(`/org/assessments/${assessment.id}` as Route);
 }
 
-/** owner/admin only: flip whether a screen accepts new candidates. */
-export async function toggleScreenActive(
-  screenId: string,
+/** owner/admin only: flip whether an assessment accepts new candidates. */
+export async function toggleAssessmentActive(
+  assessmentId: string,
 ): Promise<{ ok: true; active: boolean } | ActionError> {
   const viewer = await getViewer();
-  const screen = await manageableScreen(viewer, screenId);
-  if (!screen) return { ok: false, error: "Screen not found." };
+  const assessment = await manageableAssessment(viewer, assessmentId);
+  if (!assessment) return { ok: false, error: "Assessment not found." };
 
-  const updated = await prisma.screen.update({
-    where: { id: screenId },
-    data: { active: !screen.active },
+  const updated = await prisma.assessment.update({
+    where: { id: assessmentId },
+    data: { active: !assessment.active },
     select: { active: true },
   });
 
@@ -285,15 +285,15 @@ export async function toggleScreenActive(
  * in the confirm copy.
  */
 export async function rotateInviteToken(
-  screenId: string,
+  assessmentId: string,
 ): Promise<{ ok: true; token: string } | ActionError> {
   const viewer = await getViewer();
-  const screen = await manageableScreen(viewer, screenId);
-  if (!screen) return { ok: false, error: "Screen not found." };
+  const assessment = await manageableAssessment(viewer, assessmentId);
+  if (!assessment) return { ok: false, error: "Assessment not found." };
 
   const token = randomBytes(12).toString("base64url");
-  await prisma.screen.update({
-    where: { id: screenId },
+  await prisma.assessment.update({
+    where: { id: assessmentId },
     data: { inviteToken: token },
   });
 
@@ -301,25 +301,25 @@ export async function rotateInviteToken(
 }
 
 /**
- * The screen if the viewer may manage it (owner/admin of its org), else null.
- * Both "no such screen" and "not permitted" return null.
+ * The assessment if the viewer may manage it (owner/admin of its org), else null.
+ * Both "no such assessment" and "not permitted" return null.
  */
-async function manageableScreen(
+async function manageableAssessment(
   viewer: Awaited<ReturnType<typeof getViewer>>,
-  screenId: string,
+  assessmentId: string,
 ): Promise<{ active: boolean } | null> {
   if (viewer.kind !== "user") return null;
 
-  const screen = await prisma.screen.findUnique({
-    where: { id: screenId },
+  const assessment = await prisma.assessment.findUnique({
+    where: { id: assessmentId },
     select: { active: true, orgId: true },
   });
-  if (!screen) return null;
+  if (!assessment) return null;
 
   const membership = await prisma.member.findUnique({
     where: {
       organizationId_userId: {
-        organizationId: screen.orgId,
+        organizationId: assessment.orgId,
         userId: viewer.userId,
       },
     },
@@ -332,10 +332,10 @@ async function manageableScreen(
     return null;
   }
 
-  return { active: screen.active };
+  return { active: assessment.active };
 }
 
-const startScreenSchema = z.object({
+const startAssessmentSchema = z.object({
   candidateName: z
     .string()
     .trim()
@@ -359,18 +359,18 @@ const frozenQuestionsSchema = z.array(
 );
 
 /**
- * PUBLIC: a candidate — anonymous or signed in — starts an attempt at a screen.
+ * PUBLIC: a candidate — anonymous or signed in — starts an attempt at an assessment.
  *
  * Screens are always timed, so the deadline is set at creation. One attempt per
  * candidate is not enforceable without an identity we don't collect; the report
  * simply shows every attempt.
  */
-export async function startScreenSession(
+export async function startAssessmentSession(
   token: string,
   _prev: unknown,
   formData: FormData,
 ): Promise<ActionError | never> {
-  const parsed = startScreenSchema.safeParse({
+  const parsed = startAssessmentSchema.safeParse({
     candidateName: String(formData.get("candidateName") ?? ""),
     candidateEmail: String(formData.get("candidateEmail") ?? ""),
   });
@@ -381,7 +381,7 @@ export async function startScreenSession(
     };
   }
 
-  const screen = await prisma.screen.findFirst({
+  const assessment = await prisma.assessment.findFirst({
     where: { inviteToken: token, active: true },
     select: {
       id: true,
@@ -392,36 +392,37 @@ export async function startScreenSession(
       questions: true,
     },
   });
-  if (!screen) {
+  if (!assessment) {
     return {
       ok: false,
       error: "This screening link is no longer active. Ask for a fresh one.",
     };
   }
 
-  const frozen = frozenQuestionsSchema.safeParse(screen.questions);
+  const frozen = frozenQuestionsSchema.safeParse(assessment.questions);
   if (!frozen.success || frozen.data.length === 0) {
     return {
       ok: false,
-      error: "This screen is misconfigured. Please contact the organization.",
+      error:
+        "This assessment is misconfigured. Please contact the organization.",
     };
   }
 
   const viewer = await getViewer();
   const now = new Date();
-  const timeLimitMs = screen.timeLimitMs ?? 20 * 60_000;
+  const timeLimitMs = assessment.timeLimitMs ?? 20 * 60_000;
 
   const session = await prisma.interviewSession.create({
     data: {
       // A signed-in candidate keeps the attempt in their own history; an
       // anonymous one reaches it through the session id, as everywhere else.
       userId: viewer.kind === "user" ? viewer.userId : null,
-      mode: "SCREEN",
-      screenId: screen.id,
+      mode: "ASSESSMENT",
+      assessmentId: assessment.id,
       candidateName: parsed.data.candidateName,
       candidateEmail: parsed.data.candidateEmail,
-      topic: screen.topic,
-      difficulty: screen.difficulty,
+      topic: assessment.topic,
+      difficulty: assessment.difficulty,
       questionCount: frozen.data.length,
       timeLimitMs,
       // READY, not GENERATING: the questions already exist, so the runner

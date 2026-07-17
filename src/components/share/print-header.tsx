@@ -2,7 +2,7 @@ import { DataLabel } from "@/components/ui/prose";
 import type { SessionDetail } from "@/server/dal/interview";
 
 /**
- * A masthead that exists only on paper. On screen the page already has its own
+ * A masthead that exists only on paper. On assessment the page already has its own
  * heading and the sticky site header; neither prints (both are .no-print). So a
  * printed result would otherwise open with a bare score and no idea what it is
  * or where it came from. This is `print-only` — hidden on screen, shown by the

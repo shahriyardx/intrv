@@ -16,7 +16,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import type { QuestionStat, ScreenAnalytics } from "@/server/dal/org-analytics";
+import type {
+  AssessmentAnalytics,
+  QuestionStat,
+} from "@/server/dal/org-analytics";
 
 /**
  * How the cohort scored, and where any one candidate sits in it.
@@ -28,7 +31,7 @@ import type { QuestionStat, ScreenAnalytics } from "@/server/dal/org-analytics";
 export function ScoreDistribution({
   analytics,
 }: {
-  analytics: ScreenAnalytics;
+  analytics: AssessmentAnalytics;
 }) {
   if (analytics.graded === 0) {
     return (
@@ -56,7 +59,7 @@ export function ScoreDistribution({
           ? `Only ${analytics.graded} graded ${
               analytics.graded === 1 ? "attempt" : "attempts"
             } so far — read the shape once more candidates have taken it.`
-          : "How the whole cohort scored. A screen where everyone lands in one band isn't separating candidates."
+          : "How the whole cohort scored. An assessment where everyone lands in one band isn't separating candidates."
       }
       table={
         <Table>
@@ -142,7 +145,7 @@ const VERDICT = {
 } as const;
 
 /**
- * Per-question pass rates — the part that makes the screen better rather than
+ * Per-question pass rates — the part that makes the assessment better rather than
  * just measuring candidates.
  *
  * A question nearly everyone passes is costing a slot without buying

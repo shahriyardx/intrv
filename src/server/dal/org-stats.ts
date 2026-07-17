@@ -2,7 +2,7 @@
  * The maths behind the org analytics.
  *
  * Import-free on purpose, like `owner.ts`: these functions decide what a
- * recruiter is told about a candidate and about their own screen, so they must
+ * recruiter is told about a candidate and about their own assessment, so they must
  * be testable without a database or an environment.
  */
 

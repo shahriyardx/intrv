@@ -6,7 +6,7 @@ import "./globals.css";
 
 /**
  * Replaces the root layout, so everything it set up is gone: no font variables,
- * no theme provider, no header. This screen therefore assumes nothing loads —
+ * no theme provider, no header. This assessment therefore assumes nothing loads —
  * system faces stand in for the webfonts, and it renders light-only because the
  * `.dark` class is applied by a provider that no longer exists.
  */

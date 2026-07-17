@@ -3,14 +3,14 @@ import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StatRow, StatTile } from "@/components/analytics/stat-tile";
-import { formatDuration } from "@/components/org/format";
-import { IntegrityChips } from "@/components/org/integrity-chips";
-import { InviteLink } from "@/components/org/invite-link";
 import {
   QuestionQuality,
   ScoreDistribution,
-} from "@/components/org/screen-analytics";
-import { ScreenControls } from "@/components/org/screen-controls";
+} from "@/components/org/assessment-analytics";
+import { AssessmentControls } from "@/components/org/assessment-controls";
+import { formatDuration } from "@/components/org/format";
+import { IntegrityChips } from "@/components/org/integrity-chips";
+import { InviteLink } from "@/components/org/invite-link";
 import { Badge } from "@/components/ui/badge";
 import { DataLabel } from "@/components/ui/prose";
 import {
@@ -22,11 +22,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { env } from "@/lib/env";
-import { getScreenReport } from "@/server/dal/org";
-import { getScreenAnalytics } from "@/server/dal/org-analytics";
+import { getAssessmentReport } from "@/server/dal/org";
+import { getAssessmentAnalytics } from "@/server/dal/org-analytics";
 import { getViewer } from "@/server/dal/session";
 
-type Props = { params: Promise<{ screenId: string }> };
+type Props = { params: Promise<{ assessmentId: string }> };
 
 /** The share of the cohort this candidate outscored. Ungraded attempts have none. */
 function percentileLabel(percentile: number | undefined): string {
@@ -34,24 +34,24 @@ function percentileLabel(percentile: number | undefined): string {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { screenId } = await params;
+  const { assessmentId } = await params;
   const viewer = await getViewer();
-  const report = await getScreenReport(viewer, screenId);
-  return { title: report?.screen.title ?? "Screen" };
+  const report = await getAssessmentReport(viewer, assessmentId);
+  return { title: report?.assessment.title ?? "Assessment" };
 }
 
 export default async function ScreenReportPage({ params }: Props) {
-  const { screenId } = await params;
+  const { assessmentId } = await params;
   const viewer = await getViewer();
 
   const [report, analytics] = await Promise.all([
-    getScreenReport(viewer, screenId),
-    getScreenAnalytics(viewer, screenId),
+    getAssessmentReport(viewer, assessmentId),
+    getAssessmentAnalytics(viewer, assessmentId),
   ]);
   if (!report) notFound();
 
-  const { screen, candidates, canManage } = report;
-  const inviteUrl = `${env.BETTER_AUTH_URL}/i/${screen.inviteToken}`;
+  const { assessment, candidates, canManage } = report;
+  const inviteUrl = `${env.BETTER_AUTH_URL}/i/${assessment.inviteToken}`;
 
   // A percentile against a cohort of one says "100th" and means nothing.
   const showPercentile = (analytics?.graded ?? 0) >= 5;
@@ -60,36 +60,29 @@ export default async function ScreenReportPage({ params }: Props) {
     <div className="space-y-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <DataLabel>
-            <Link
-              href={"/org" as Route}
-              className="underline-offset-4 hover:text-foreground hover:underline"
-            >
-              {screen.orgName}
-            </Link>{" "}
-            / Screen
-          </DataLabel>
-          <h2 className="mt-2 font-display text-display-md">{screen.title}</h2>
+          {/* No org/Assessment breadcrumb: the header above already names the org,
+              and the nav already says you are in Screens. */}
+          <h2 className="font-display text-display-md">{assessment.title}</h2>
           <p className="mt-1 font-mono text-[0.625rem] text-muted-foreground uppercase tracking-[0.12em]">
-            {screen.topic} · {screen.difficulty.toLowerCase()} ·{" "}
-            {screen.questionCount} questions ·{" "}
-            {screen.timeLimitMs
-              ? `${screen.timeLimitMs / 60_000} min`
+            {assessment.topic} · {assessment.difficulty.toLowerCase()} ·{" "}
+            {assessment.questionCount} questions ·{" "}
+            {assessment.timeLimitMs
+              ? `${assessment.timeLimitMs / 60_000} min`
               : "untimed"}
           </p>
         </div>
         <Badge
-          variant={screen.active ? "secondary" : "outline"}
+          variant={assessment.active ? "secondary" : "outline"}
           className="text-[0.625rem]"
         >
-          {screen.active ? "active" : "closed"}
+          {assessment.active ? "active" : "closed"}
         </Badge>
       </div>
 
       <section className="space-y-4 rounded-md border p-5">
         <div className="flex items-baseline justify-between gap-4">
           <DataLabel as="h3">Invite link</DataLabel>
-          {!screen.active ? (
+          {!assessment.active ? (
             <span className="text-muted-foreground text-xs">
               Closed — new candidates are turned away.
             </span>
@@ -97,12 +90,15 @@ export default async function ScreenReportPage({ params }: Props) {
         </div>
         <InviteLink url={inviteUrl} />
         <p className="text-muted-foreground text-xs">
-          Anyone with this link can take the screen — no account needed. Rotate
-          it to revoke every link you've shared.
+          Anyone with this link can take the assessment — no account needed.
+          Rotate it to revoke every link you've shared.
         </p>
         {canManage ? (
           <div className="border-t pt-4">
-            <ScreenControls screenId={screen.id} active={screen.active} />
+            <AssessmentControls
+              assessmentId={assessment.id}
+              active={assessment.active}
+            />
           </div>
         ) : null}
       </section>
@@ -134,8 +130,8 @@ export default async function ScreenReportPage({ params }: Props) {
                 label="Median time"
                 value={formatDuration(analytics.medianDurationMs)}
                 note={
-                  screen.timeLimitMs
-                    ? `of ${Math.round(screen.timeLimitMs / 60_000)} min · ${
+                  assessment.timeLimitMs
+                    ? `of ${Math.round(assessment.timeLimitMs / 60_000)} min · ${
                         analytics.hitLimit
                       } ran out`
                     : "No time limit"
@@ -174,8 +170,8 @@ export default async function ScreenReportPage({ params }: Props) {
             </span>
             <p className="font-display text-display-md">No attempts yet</p>
             <p className="mt-2 max-w-sm text-pretty text-muted-foreground text-sm leading-relaxed">
-              Share the invite link above. Every candidate who takes the screen
-              shows up here with their score and anti-cheat signals.
+              Share the invite link above. Every candidate who takes the
+              assessment shows up here with their score and anti-cheat signals.
             </p>
           </div>
         ) : (
@@ -201,7 +197,9 @@ export default async function ScreenReportPage({ params }: Props) {
                     <TableCell className="max-w-40 truncate font-medium">
                       {c.status === "GRADED" ? (
                         <Link
-                          href={`/org/screens/${screen.id}/c/${c.id}` as Route}
+                          href={
+                            `/org/assessments/${assessment.id}/c/${c.id}` as Route
+                          }
                           className="underline-offset-4 hover:underline"
                         >
                           {name}

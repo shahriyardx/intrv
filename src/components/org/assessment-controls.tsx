@@ -16,18 +16,21 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { rotateInviteToken, toggleScreenActive } from "@/server/actions/org";
+import {
+  rotateInviteToken,
+  toggleAssessmentActive,
+} from "@/server/actions/org";
 
 /**
- * owner/admin controls for a screen: the active switch and the token rotation.
+ * owner/admin controls for an assessment: the active switch and the token rotation.
  * Both re-fetch the page on success so the invite link and the badge reflect
  * the new state — the server DAL is the source of truth, not this local view.
  */
-export function ScreenControls({
-  screenId,
+export function AssessmentControls({
+  assessmentId,
   active,
 }: {
-  screenId: string;
+  assessmentId: string;
   active: boolean;
 }) {
   const router = useRouter();
@@ -37,15 +40,15 @@ export function ScreenControls({
 
   const onToggle = () => {
     startToggle(async () => {
-      const result = await toggleScreenActive(screenId);
+      const result = await toggleAssessmentActive(assessmentId);
       if (!result.ok) {
         toast.error(result.error);
         return;
       }
       toast.success(
         result.active
-          ? "Screen is accepting candidates."
-          : "Screen closed — no new candidates.",
+          ? "Assessment is accepting candidates."
+          : "Assessment closed — no new candidates.",
       );
       router.refresh();
     });
@@ -53,7 +56,7 @@ export function ScreenControls({
 
   const onRotate = () => {
     startRotate(async () => {
-      const result = await rotateInviteToken(screenId);
+      const result = await rotateInviteToken(assessmentId);
       if (!result.ok) {
         toast.error(result.error);
         return;

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { NewScreenButton } from "@/components/org/new-screen-button";
+import { NewAssessmentButton } from "@/components/org/new-assessment-button";
 import { OrgNav } from "@/components/org/org-nav";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
@@ -58,7 +58,7 @@ async function OrgShell({ children }: { children: React.ReactNode }) {
             <DataLabel>For recruiters</DataLabel>
             <h1 className="mt-1 font-display text-display-md">{org.name}</h1>
           </div>
-          {canManage ? <NewScreenButton /> : null}
+          {canManage ? <NewAssessmentButton /> : null}
         </header>
         <div className="mb-8">
           <OrgNav />

@@ -48,8 +48,8 @@ export default async function OrgMembersPage() {
         <Prose className="text-sm text-muted-foreground">
           <p>
             Everyone here can read every candidate's report, including their
-            name, email, and answers. Admins can also create screens and invite
-            people; members read only.
+            name, email, and answers. Admins can also create assessments and
+            invite people; members read only.
           </p>
         </Prose>
 

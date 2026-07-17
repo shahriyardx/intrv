@@ -20,7 +20,7 @@ type Props = { params: Promise<{ invitationId: string }> };
  * invitee has no membership yet, and the org layout bounces anyone without one
  * to /dashboard — they would never reach the button.
  *
- * The invitation id is the capability, the same shape as a screen's invite
+ * The invitation id is the capability, the same shape as an assessment's invite
  * token. Knowing it reveals only the org's name and the invited address, and
  * better-auth still refuses the accept unless the signed-in account's email
  * matches.
@@ -58,7 +58,7 @@ export default async function JoinPage({ params }: Props) {
           <p>
             You've been invited as {invitation.role === "admin" ? "an" : "a"}{" "}
             {invitation.role ?? "member"}. You'll be able to see every candidate
-            who takes their screens, including names, emails, and answers.
+            who takes their assessments, including names, emails, and answers.
           </p>
         </Prose>
 

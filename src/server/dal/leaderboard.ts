@@ -74,7 +74,7 @@ export async function getLeaderboard(limit = 50): Promise<LeaderboardRow[]> {
       AND s."score" IS NOT NULL
       AND s."userId" IS NOT NULL
       -- Screening attempts are a recruiter's private process, not play.
-      AND s."mode" != 'SCREEN'
+      AND s."mode" != 'ASSESSMENT'
       AND u."leaderboardOptOut" = false
       AND COALESCE(u."banned", false) = false
     GROUP BY s."userId", u."name"
@@ -142,7 +142,7 @@ export async function getViewerStanding(
       WHERE s."status" = 'GRADED'
         AND s."score" IS NOT NULL
         AND s."userId" IS NOT NULL
-        AND s."mode" != 'SCREEN'
+        AND s."mode" != 'ASSESSMENT'
         AND u."leaderboardOptOut" = false
         AND COALESCE(u."banned", false) = false
       GROUP BY s."userId"

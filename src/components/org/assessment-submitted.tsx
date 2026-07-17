@@ -1,12 +1,12 @@
 import { CheckCircleIcon } from "@phosphor-icons/react/dist/ssr";
 
 /**
- * What a candidate sees after submitting a screen. A screen is graded for the
+ * What a candidate sees after submitting an assessment. An assessment is graded for the
  * organization, not the candidate — showing them the score or the answer key
  * would hand the next candidate an advantage. So this is a quiet confirmation
  * and nothing more.
  */
-export function ScreenSubmitted({ orgName }: { orgName: string }) {
+export function AssessmentSubmitted({ orgName }: { orgName: string }) {
   return (
     <div className="flex min-h-72 flex-col items-center justify-center rounded-md border border-dashed px-6 py-16 text-center">
       <span

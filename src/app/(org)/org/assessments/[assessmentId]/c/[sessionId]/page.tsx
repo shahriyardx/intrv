@@ -9,29 +9,29 @@ import { getCandidateDetail } from "@/server/dal/org";
 import { getViewer } from "@/server/dal/session";
 
 type Props = {
-  params: Promise<{ screenId: string; sessionId: string }>;
+  params: Promise<{ assessmentId: string; sessionId: string }>;
 };
 
 export const metadata: Metadata = { title: "Candidate" };
 
 export default async function CandidateDetailPage({ params }: Props) {
-  const { screenId, sessionId } = await params;
+  const { assessmentId, sessionId } = await params;
   const viewer = await getViewer();
 
   const result = await getCandidateDetail(viewer, sessionId);
   if (!result) notFound();
 
-  const { detail, candidate, screen } = result;
+  const { detail, candidate, assessment } = result;
 
   return (
     <div className="mx-auto max-w-3xl space-y-10">
       <div>
         <DataLabel>
           <Link
-            href={`/org/screens/${screenId}` as Route}
+            href={`/org/assessments/${assessmentId}` as Route}
             className="underline-offset-4 hover:text-foreground hover:underline"
           >
-            {screen.title}
+            {assessment.title}
           </Link>{" "}
           / Candidate
         </DataLabel>

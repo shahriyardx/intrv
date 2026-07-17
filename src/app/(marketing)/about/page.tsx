@@ -21,7 +21,7 @@ const NOT = [
   },
   {
     title: "Not a job board",
-    body: "No resume review, no job matching, no application tracking. Your own practice is between you and the page. Teams can screen candidates through organizations, but that's a separate surface — it never touches your personal history.",
+    body: "No resume review, no job matching, no application tracking. Your own practice is between you and the page. Teams can assessment candidates through organizations, but that's a separate surface — it never touches your personal history.",
   },
   {
     title: "Not a product with a pricing page",

@@ -9,7 +9,7 @@ import {
 } from "@/components/admin/format";
 import { SectionHeading } from "@/components/admin/section-heading";
 import { StatRow, StatTile } from "@/components/analytics/stat-tile";
-import { ScreensTable } from "@/components/org/screens-table";
+import { AssessmentsTable } from "@/components/org/assessments-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getActiveOrg, listScreens } from "@/server/dal/org";
+import { getActiveOrg, listAssessments } from "@/server/dal/org";
 import {
   getOrgOverview,
   listRecentCandidates,
@@ -38,25 +38,27 @@ export default async function OrgDashboardPage() {
   if (!org) redirect("/dashboard");
 
   const viewer = await getViewer();
-  const [screens, overview, recent] = await Promise.all([
-    listScreens(viewer, org.id),
+  const [assessments, overview, recent] = await Promise.all([
+    listAssessments(viewer, org.id),
     getOrgOverview(viewer, org.id),
     listRecentCandidates(viewer, org.id),
   ]);
 
   const canManage = org.role === "owner" || org.role === "admin";
 
-  if (screens.length === 0) {
+  if (assessments.length === 0) {
     return (
       <div className="space-y-6">
         <EmptyState
           icon={<FileTextIcon weight="duotone" />}
-          title="No screens yet"
-          description="A screen is a frozen interview you send to candidates. Generate one and share its link — every candidate answers the identical set, so their scores are comparable."
+          title="No assessments yet"
+          description="An assessment is a frozen interview you send to candidates. Generate one and share its link — every candidate answers the identical set, so their scores are comparable."
           action={
             canManage ? (
               <Button asChild>
-                <Link href={"/org/screens/new" as Route}>Create a screen</Link>
+                <Link href={"/org/assessments/new" as Route}>
+                  Create an assessment
+                </Link>
               </Button>
             ) : undefined
           }
@@ -116,21 +118,21 @@ export default async function OrgDashboardPage() {
       <section className="space-y-6">
         <SectionHeading label="Activity" title="Latest candidates">
           <Button asChild variant="outline" size="sm">
-            <Link href={"/org/screens" as Route}>All screens</Link>
+            <Link href={"/org/assessments" as Route}>All assessments</Link>
           </Button>
         </SectionHeading>
 
         {recent.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No one has taken a screen yet. Share a screen's invite link to get
-            started.
+            No one has taken an assessment yet. Share an assessment's invite
+            link to get started.
           </p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Candidate</TableHead>
-                <TableHead>Screen</TableHead>
+                <TableHead>Assessment</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Score</TableHead>
                 <TableHead className="text-right">When</TableHead>
@@ -142,7 +144,7 @@ export default async function OrgDashboardPage() {
                   <TableCell className="max-w-44 truncate">
                     <Link
                       href={
-                        `/org/screens/${row.screenId}/c/${row.sessionId}` as Route
+                        `/org/assessments/${row.assessmentId}/c/${row.sessionId}` as Route
                       }
                       className="underline-offset-4 hover:underline"
                     >
@@ -150,7 +152,7 @@ export default async function OrgDashboardPage() {
                     </Link>
                   </TableCell>
                   <TableCell className="max-w-40 truncate text-muted-foreground">
-                    {row.screenTitle}
+                    {row.assessmentTitle}
                   </TableCell>
                   <TableCell>
                     <Badge
@@ -174,8 +176,8 @@ export default async function OrgDashboardPage() {
       </section>
 
       <section className="space-y-6">
-        <SectionHeading label="Screens" title="Your screens" />
-        <ScreensTable screens={screens.slice(0, 5)} />
+        <SectionHeading label="Screens" title="Your assessments" />
+        <AssessmentsTable assessments={assessments.slice(0, 5)} />
       </section>
     </div>
   );

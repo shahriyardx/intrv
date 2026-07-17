@@ -17,11 +17,11 @@ import type { Viewer } from "@/server/dal/owner";
  *
  * Two audiences, one file. A recruiter needs to rank candidates fairly (which
  * takes cohort context — a bare 72% means nothing without the distribution it
- * sits in), and to make the screen itself better over time (which takes
+ * sits in), and to make the assessment itself better over time (which takes
  * per-question pass rates). Everything here is membership-gated exactly like
  * `org.ts`: not a member, no data, and null rather than a 403.
  *
- * Nothing in here reads `Screen.questions` or `Question.answerKey` into a
+ * Nothing in here reads `Assessment.questions` or `Question.answerKey` into a
  * client-bound shape — the frozen set carries answer keys and stays server-side.
  */
 
@@ -76,11 +76,11 @@ export async function getOrgOverview(
   const now = Date.now();
   const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
 
-  const [screens, activeScreens, sessions] = await Promise.all([
-    prisma.screen.count({ where: { orgId } }),
-    prisma.screen.count({ where: { orgId, active: true } }),
+  const [assessments, activeScreens, sessions] = await Promise.all([
+    prisma.assessment.count({ where: { orgId } }),
+    prisma.assessment.count({ where: { orgId, active: true } }),
     prisma.interviewSession.findMany({
-      where: { screen: { orgId } },
+      where: { assessment: { orgId } },
       select: {
         score: true,
         startedAt: true,
@@ -117,7 +117,7 @@ export async function getOrgOverview(
 
   return {
     activeScreens,
-    totalScreens: screens,
+    totalScreens: assessments,
     candidates: sessions.length,
     candidates7d: sessions.filter((s) => s.createdAt >= weekAgo).length,
     completionRate: settled === 0 ? null : submitted.length / settled,
@@ -129,8 +129,8 @@ export async function getOrgOverview(
 
 export type RecentCandidate = {
   sessionId: string;
-  screenId: string;
-  screenTitle: string;
+  assessmentId: string;
+  assessmentTitle: string;
   name: string | null;
   status: string;
   score: number | null;
@@ -146,7 +146,7 @@ export async function listRecentCandidates(
   if (!(await memberOf(viewer, orgId))) return [];
 
   const rows = await prisma.interviewSession.findMany({
-    where: { screen: { orgId } },
+    where: { assessment: { orgId } },
     orderBy: { createdAt: "desc" },
     take: limit,
     select: {
@@ -156,15 +156,15 @@ export async function listRecentCandidates(
       score: true,
       createdAt: true,
       submittedAt: true,
-      screenId: true,
-      screen: { select: { title: true } },
+      assessmentId: true,
+      assessment: { select: { title: true } },
     },
   });
 
   return rows.map((row) => ({
     sessionId: row.id,
-    screenId: row.screenId ?? "",
-    screenTitle: row.screen?.title ?? "—",
+    assessmentId: row.assessmentId ?? "",
+    assessmentTitle: row.assessment?.title ?? "—",
     name: row.candidateName,
     status: row.status,
     score: row.score === null ? null : Number(row.score),
@@ -173,7 +173,7 @@ export async function listRecentCandidates(
 }
 
 // ---------------------------------------------------------------------------
-// Per-screen analytics
+// Per-assessment analytics
 // ---------------------------------------------------------------------------
 
 export type QuestionStat = {
@@ -187,7 +187,7 @@ export type QuestionStat = {
   verdict: QuestionVerdict;
 };
 
-export type ScreenAnalytics = {
+export type AssessmentAnalytics = {
   graded: number;
   started: number;
   submitted: number;
@@ -197,7 +197,7 @@ export type ScreenAnalytics = {
   p25: number | null;
   p75: number | null;
   distribution: ScoreBucket[];
-  /** sessionId → percentile rank (0-100) among graded attempts at this screen. */
+  /** sessionId → percentile rank (0-100) among graded attempts at this assessment. */
   percentiles: Map<string, number>;
   medianDurationMs: number | null;
   /** Submitted within a minute of the deadline — they ran out of time. */
@@ -208,26 +208,26 @@ export type ScreenAnalytics = {
 };
 
 /**
- * Everything the screen report needs beyond the candidate list itself.
+ * Everything the assessment report needs beyond the candidate list itself.
  *
- * Returns null for a non-member or an unknown screen alike — the same
+ * Returns null for a non-member or an unknown assessment alike — the same
  * non-disclosure the rest of the org DAL keeps.
  */
-export async function getScreenAnalytics(
+export async function getAssessmentAnalytics(
   viewer: Viewer,
-  screenId: string,
-): Promise<ScreenAnalytics | null> {
-  const screen = await prisma.screen.findUnique({
-    where: { id: screenId },
+  assessmentId: string,
+): Promise<AssessmentAnalytics | null> {
+  const assessment = await prisma.assessment.findUnique({
+    where: { id: assessmentId },
     select: { id: true, orgId: true, timeLimitMs: true },
   });
 
-  if (!screen || !(await memberOf(viewer, screen.orgId))) return null;
+  if (!assessment || !(await memberOf(viewer, assessment.orgId))) return null;
 
   const now = Date.now();
 
   const sessions = await prisma.interviewSession.findMany({
-    where: { screenId },
+    where: { assessmentId },
     select: {
       id: true,
       status: true,
@@ -291,24 +291,24 @@ export async function getScreenAnalytics(
     percentiles,
     medianDurationMs: median(durations),
     hitLimit,
-    timeLimitMs: screen.timeLimitMs,
+    timeLimitMs: assessment.timeLimitMs,
     flagged,
-    questions: await questionStats(screenId),
+    questions: await questionStats(assessmentId),
   };
 }
 
 /**
  * Per-question pass rates across every graded attempt.
  *
- * This is the part that makes a screen better rather than just measuring
+ * This is the part that makes an assessment better rather than just measuring
  * candidates: a question nearly everyone passes carries no signal and is
  * costing a slot, and one nearly everyone fails is usually ambiguous rather
- * than hard. Because a screen's question set is frozen, `index` identifies the
+ * than hard. Because an assessment's question set is frozen, `index` identifies the
  * same question across every candidate.
  */
-async function questionStats(screenId: string): Promise<QuestionStat[]> {
+async function questionStats(assessmentId: string): Promise<QuestionStat[]> {
   const rows = await prisma.question.findMany({
-    where: { session: { screenId, status: "GRADED" } },
+    where: { session: { assessmentId, status: "GRADED" } },
     select: {
       index: true,
       type: true,

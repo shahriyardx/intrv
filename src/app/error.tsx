@@ -15,7 +15,7 @@ export default function RouteError({
   unstable_retry: () => void;
 }) {
   useEffect(() => {
-    // The digest is the only handle that ties this screen to a server log line.
+    // The digest is the only handle that ties this assessment to a server log line.
     // The message is deliberately not rendered — in production it is generic,
     // and in development it is nobody's business but ours.
     console.error("Route error", error.digest ?? "(no digest)", error);
