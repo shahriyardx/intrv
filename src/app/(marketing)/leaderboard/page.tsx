@@ -171,7 +171,7 @@ function HeadRow() {
       <TableHead className={cn(LABEL, "hidden text-right sm:table-cell")}>
         Activity
       </TableHead>
-      <TableHead className={cn(LABEL, "text-right")}>Points</TableHead>
+      <TableHead className={cn(LABEL, "pr-4 text-right")}>Points</TableHead>
     </TableRow>
   );
 }
@@ -209,7 +209,7 @@ function Row({ row, isViewer }: { row: LeaderboardRow; isViewer: boolean }) {
         {row.averageScore}% avg
       </TableCell>
 
-      <TableCell className="py-3.5 text-right font-display text-lg tabular">
+      <TableCell className="py-3.5 pr-4 text-right font-display text-lg tabular">
         {row.points.toLocaleString("en-GB")}
       </TableCell>
     </TableRow>
@@ -288,7 +288,7 @@ function BoardSkeleton() {
             <TableCell className="hidden py-3.5 sm:table-cell">
               <span className="ml-auto block h-4 w-28 bg-muted" />
             </TableCell>
-            <TableCell className="py-3.5">
+            <TableCell className="py-3.5 pr-4">
               <span className="ml-auto block h-4 w-10 bg-muted" />
             </TableCell>
           </TableRow>
