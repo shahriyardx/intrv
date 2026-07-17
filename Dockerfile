@@ -1,7 +1,7 @@
 FROM oven/bun:1 AS install
 WORKDIR /app
 
-COPY package.json bun.lock prisma.config.ts .env ./
+COPY package.json bun.lock prisma.config.ts ./
 COPY prisma ./prisma
 RUN bun install --frozen-lockfile
 
@@ -13,7 +13,7 @@ COPY . .
 COPY --from=install /app/src/generated ./src/generated
 
 ENV NODE_ENV=production
-RUN bun run build && rm -f .next/standalone/.env
+RUN bun run build
 
 FROM oven/bun:1 AS runner
 WORKDIR /app

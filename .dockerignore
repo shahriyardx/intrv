@@ -1,3 +1,11 @@
+# Next copies .env into .next/standalone, so a local build with one present
+# would ship BETTER_AUTH_SECRET and DEEPSEEK_API_KEY inside the image. Coolify
+# keeps its build-time .env outside the context and injects ARGs instead, so
+# nothing depends on this being here.
+.env
+.env.*
+!.env.example
+
 node_modules
 .next
 out
