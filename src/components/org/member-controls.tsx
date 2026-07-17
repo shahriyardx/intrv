@@ -90,7 +90,6 @@ export function InviteForm() {
               autoComplete="off"
               placeholder="teammate@company.com"
               aria-invalid={form.formState.errors.email ? true : undefined}
-              className="h-11"
               {...form.register("email")}
             />
           </Field>
@@ -105,7 +104,9 @@ export function InviteForm() {
                 form.setValue("role", v as "admin" | "member")
               }
             >
-              <SelectTrigger id="invite-role" className="h-11">
+              {/* w-full, not the component's default w-fit: the trigger has to
+                  fill the field or it stops lining up with the input beside it. */}
+              <SelectTrigger id="invite-role" className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -115,7 +116,7 @@ export function InviteForm() {
             </Select>
           </Field>
 
-          <Button type="submit" disabled={pending} className="h-11">
+          <Button type="submit" disabled={pending}>
             {pending ? "Inviting…" : "Invite"}
           </Button>
         </div>

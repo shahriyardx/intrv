@@ -1,4 +1,4 @@
-import { FileTextIcon, PlusIcon } from "@phosphor-icons/react/dist/ssr";
+import { FileTextIcon } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -21,16 +21,8 @@ export default async function OrgScreensPage() {
 
   return (
     <div className="space-y-6">
-      <SectionHeading label="Screens" title="Every screen">
-        {canManage ? (
-          <Button asChild size="sm">
-            <Link href={"/org/screens/new" as Route}>
-              <PlusIcon className="size-4" />
-              New screen
-            </Link>
-          </Button>
-        ) : null}
-      </SectionHeading>
+      {/* No New screen button here: the org header carries it on every page. */}
+      <SectionHeading label="Screens" title="Every screen" />
 
       {screens.length === 0 ? (
         <EmptyState

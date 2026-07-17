@@ -4,6 +4,7 @@ import { CheckIcon, LinkSimpleIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 /**
  * The public capability link for a screen. The full URL is built server-side
@@ -22,11 +23,17 @@ export function InviteLink({ url }: { url: string }) {
   };
 
   return (
-    <div className="flex items-stretch gap-2">
-      <code className="flex-1 truncate rounded-md border bg-muted/40 px-3 py-2 font-mono text-xs text-muted-foreground">
-        {url}
-      </code>
-      <Button variant="outline" size="sm" onClick={copy} className="shrink-0">
+    <div className="flex items-center gap-2">
+      {/* A real Input rather than a styled <code>: it shares the control
+          sizing, and it stays selectable when the clipboard API is blocked. */}
+      <Input
+        readOnly
+        value={url}
+        aria-label="Invite link"
+        onFocus={(e) => e.currentTarget.select()}
+        className="flex-1 font-mono text-muted-foreground"
+      />
+      <Button variant="outline" onClick={copy} className="shrink-0">
         {copied ? (
           <CheckIcon className="size-4" />
         ) : (

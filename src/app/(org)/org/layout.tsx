@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { NewScreenButton } from "@/components/org/new-screen-button";
 import { OrgNav } from "@/components/org/org-nav";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
@@ -39,7 +40,10 @@ async function OrgShell({ children }: { children: React.ReactNode }) {
   // The org surface is for organization accounts only. A signed-in personal
   // account has no org (org creation is signup-only) and is sent to their own
   // dashboard — the mirror of the (app) gate that sends org accounts here.
-  if (!(await getActiveOrg())) redirect("/dashboard");
+  const org = await getActiveOrg();
+  if (!org) redirect("/dashboard");
+
+  const canManage = org.role === "owner" || org.role === "admin";
 
   return (
     <>
@@ -47,9 +51,14 @@ async function OrgShell({ children }: { children: React.ReactNode }) {
         <SiteNav />
       </SiteHeader>
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
-        <header className="mb-6">
-          <DataLabel>For recruiters</DataLabel>
-          <h1 className="mt-1 font-display text-lg">Organizations</h1>
+        {/* One org per account, so the org's own name is the page's title —
+            "Organizations" named a list that does not exist. */}
+        <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <DataLabel>For recruiters</DataLabel>
+            <h1 className="mt-1 font-display text-display-md">{org.name}</h1>
+          </div>
+          {canManage ? <NewScreenButton /> : null}
         </header>
         <div className="mb-8">
           <OrgNav />

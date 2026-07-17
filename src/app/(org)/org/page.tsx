@@ -1,4 +1,4 @@
-import { FileTextIcon, PlusIcon } from "@phosphor-icons/react/dist/ssr";
+import { FileTextIcon } from "@phosphor-icons/react/dist/ssr";
 import type { Route } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -49,7 +49,6 @@ export default async function OrgDashboardPage() {
   if (screens.length === 0) {
     return (
       <div className="space-y-6">
-        <OrgHeading name={org.name} role={org.role} canManage={canManage} />
         <EmptyState
           icon={<FileTextIcon weight="duotone" />}
           title="No screens yet"
@@ -73,8 +72,6 @@ export default async function OrgDashboardPage() {
 
   return (
     <div className="space-y-12">
-      <OrgHeading name={org.name} role={org.role} canManage={canManage} />
-
       {overview ? (
         <section className="space-y-6">
           <SectionHeading label="All time" title="Where things stand" />
@@ -180,35 +177,6 @@ export default async function OrgDashboardPage() {
         <SectionHeading label="Screens" title="Your screens" />
         <ScreensTable screens={screens.slice(0, 5)} />
       </section>
-    </div>
-  );
-}
-
-function OrgHeading({
-  name,
-  role,
-  canManage,
-}: {
-  name: string;
-  role: string;
-  canManage: boolean;
-}) {
-  return (
-    <div className="flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h2 className="font-display text-display-md">{name}</h2>
-        <p className="mt-1 font-mono text-[0.625rem] text-muted-foreground uppercase tracking-[0.12em]">
-          you're {role === "member" ? "a" : "an"} {role}
-        </p>
-      </div>
-      {canManage ? (
-        <Button asChild size="sm">
-          <Link href={"/org/screens/new" as Route}>
-            <PlusIcon className="size-4" />
-            New screen
-          </Link>
-        </Button>
-      ) : null}
     </div>
   );
 }
