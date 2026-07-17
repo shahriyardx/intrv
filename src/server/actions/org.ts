@@ -45,7 +45,11 @@ const orgNameSchema = z
 export async function createOrganization(
   _prev: unknown,
   formData: FormData,
-): Promise<ActionError | never> {
+  // `code: "has_org"` lets the sign-up retry path tell "you already have one"
+  // (route to /org) apart from a real failure (show the error).
+): Promise<
+  ActionError | { ok: false; error: string; code: "has_org" } | never
+> {
   const viewer = await getViewer();
   if (viewer.kind !== "user") redirect("/sign-in?next=/sign-up");
 
@@ -63,7 +67,11 @@ export async function createOrganization(
     where: { userId: viewer.userId },
   });
   if (existing >= 1) {
-    return { ok: false, error: "This account already has an organization." };
+    return {
+      ok: false,
+      error: "This account already has an organization.",
+      code: "has_org",
+    };
   }
 
   // Pre-dedupe the slug so we keep the -2/-3 suffixing behaviour; the plugin

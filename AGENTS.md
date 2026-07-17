@@ -117,12 +117,45 @@ fast-paths or waits behind it exactly once. `getTodayDailyChallenge` is
 read-only, so a `/daily` GET never generates. `DailyChallenge.questions` carries
 answer keys → server-only.
 
-## Organizations & screening
+## Organizations & account types
 
-Access mirrors `/admin`'s non-disclosure doctrine. `src/server/dal/org.ts`
-resolves the viewer's `OrgMember` role first and returns **null (→ `notFound()`),
-never a 403**, for non-members — a stranger who guesses a slug or screen id
-learns nothing about whether it exists.
+An account is **personal** or **organization**, chosen at sign-up and mutually
+exclusive — the two surfaces never overlap.
+
+- **Account type is derived, not a column.** An org account is one with an org
+  membership; `getActiveOrg()`/`isOrgAccount()` in `src/server/dal/org.ts` are
+  the source of truth. `session.activeOrganizationId` (the better-auth plugin
+  field) names the active org, but **the cookie value is a claim, not proof** —
+  the 5-minute session cache can lag (same trap as admin roles). Every org read
+  resolves the `Member` row by `(userId, activeOrganizationId)` **in the DB per
+  request** and treats a missing/mismatched row as not-a-member; it falls back
+  to the user's single membership rather than trust the cookie. Never authorize
+  from `activeOrganizationId` alone.
+- **One org per user, created only at sign-up.** `createOrganization` rejects a
+  second org (`code: "has_org"`); there is no other creation path. The sign-up
+  form's Organization choice runs `signUp` → `createOrganization` → sets
+  `activeOrganizationId` → `/org`. If `signUp` hits "user already exists" on the
+  org path it's a stranded retry: sign in with the same creds, then continue to
+  org creation (or route to `/org` if they already have one).
+- **Routes are slug-free.** `/org` is the single active-org dashboard; screens
+  live at `/org/screens/new`, `/org/screens/[screenId]`, and
+  `/org/screens/[screenId]/c/[sessionId]`. There is no `/org/[slug]`.
+- **The account gate is per-surface, and `/s/*` is exempt — deliberately.**
+  `OrgAccountGate` (a Suspense-sibling redirect to `/org`) is mounted only on
+  the personal pages that have an org mirror: `dashboard/layout.tsx`,
+  `start/page.tsx`, `daily/page.tsx`. It is **not** on an `(app)` layout, because
+  `/s/[sessionId]` and its result live under `(app)`: a signed-in org user can
+  legitimately *take* another org's screen or a challenge link, and gating the
+  runner would yank them to `/org` mid-interview and eat the session. The mirror
+  gate in `(org)/org/layout.tsx` sends personal accounts to `/dashboard`.
+- **Known gap: OAuth users are personal-only.** The account-type choice lives on
+  the email/password form; a Google sign-up can't pick Organization, so those
+  accounts are permanently personal. A product decision (let them convert, or
+  add the choice to the OAuth flow), not yet made — don't invent a fix.
+
+Screening access mirrors `/admin`'s non-disclosure doctrine: `src/server/dal/org.ts`
+resolves the viewer's `Member` role first and returns **null (→ `notFound()`),
+never a 403**, for non-members.
 
 - `Screen.questions` is the frozen set **with answer keys** → server-only. The
   public candidate view (`getScreenByInviteToken`) never selects it.

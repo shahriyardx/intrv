@@ -92,25 +92,43 @@ export function SignUpForm({
       const result = await authClient.signUp.email({ name, email, password });
 
       if (result.error) {
-        // "User already exists" and friends come from better-auth. Surfacing the
-        // real message beats a generic failure the reader can't act on.
-        setFormError(
-          result.error.message ?? "Could not create your account. Try again.",
-        );
-        return;
+        // A personal signup on an existing email is just "sign in instead".
+        // But an organization signup can be a STRANDED retry: the account was
+        // created on a first attempt and org creation failed after, leaving a
+        // signed-out personal-looking account. Try to sign in with the given
+        // credentials and, if that works, continue to org creation below.
+        const genericErr =
+          result.error.message ?? "Could not create your account. Try again.";
+        if (accountType !== "org") {
+          setFormError(genericErr);
+          return;
+        }
+        const signIn = await authClient.signIn.email({ email, password });
+        if (signIn.error) {
+          // Wrong password, or a genuine duplicate we can't recover — surface
+          // the original signup error.
+          setFormError(genericErr);
+          return;
+        }
+        // Signed in as the stranded account; fall through to org creation.
       }
 
       setRedirecting(true);
 
       if (accountType === "org") {
-        // The account now has a session; create its one org, which flips it to
-        // an org account (sets activeOrganizationId) and redirects to /org.
+        // Create the one org, which flips the account to an org account (sets
+        // activeOrganizationId) and redirects to /org.
         const data = new FormData();
         data.set("name", orgName ?? "");
         const orgResult = await createOrganization(null, data);
-        // Success redirects; only an error object returns. The account exists
-        // either way, so surface the error rather than pretend signup failed.
         if (orgResult && !orgResult.ok) {
+          // A stranded retry whose org actually landed the first time: they
+          // already have one, so send them to it rather than error.
+          if ("code" in orgResult && orgResult.code === "has_org") {
+            router.push("/org");
+            router.refresh();
+            return;
+          }
           setRedirecting(false);
           setFormError(orgResult.error);
         }
