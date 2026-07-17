@@ -6,6 +6,7 @@ import {
   LegalSection,
   ShortVersion,
 } from "@/components/marketing/legal";
+import { Measure } from "@/components/ui/page";
 
 export const metadata: Metadata = {
   title: "Privacy",
@@ -71,7 +72,7 @@ const NOT_STORED = [
 
 export default function PrivacyPage() {
   return (
-    <>
+    <Measure>
       <LegalHeader label="Privacy" title="Privacy policy" updated={UPDATED}>
         <p className="mt-6 max-w-[68ch] text-pretty leading-relaxed text-muted-foreground">
           This describes what Intrv actually does with what you type. It was
@@ -269,6 +270,6 @@ export default function PrivacyPage() {
           <Link href="/contact">get in touch</Link>.
         </p>
       </LegalSection>
-    </>
+    </Measure>
   );
 }

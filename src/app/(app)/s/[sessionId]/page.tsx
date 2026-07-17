@@ -5,8 +5,10 @@ import { Runner } from "@/components/session/runner";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
+import { Measure, shell } from "@/components/ui/page";
 import { DataLabel } from "@/components/ui/prose";
 import { QUESTION_TYPES, type QuestionType } from "@/lib/schemas";
+import { cn } from "@/lib/utils";
 import { getAccessibleSession } from "@/server/dal/interview";
 import { getViewer } from "@/server/dal/session";
 
@@ -42,13 +44,15 @@ export default async function SessionPage(props: {
         <SiteHeader>
           <SiteNav />
         </SiteHeader>
-        <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-14">
-          <h1 className="font-display text-display-md">
-            This session didn't generate
-          </h1>
-          <p className="mt-3 text-sm text-muted-foreground">
-            {session.error ?? "Something went wrong."}
-          </p>
+        <main className={cn(shell, "flex-1 py-14")}>
+          <Measure>
+            <h1 className="font-display text-display-md">
+              This session didn't generate
+            </h1>
+            <p className="mt-3 text-sm text-muted-foreground">
+              {session.error ?? "Something went wrong."}
+            </p>
+          </Measure>
         </main>
       </>
     );
@@ -59,27 +63,31 @@ export default async function SessionPage(props: {
       <SiteHeader>
         <SiteNav />
       </SiteHeader>
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-        <div className="mb-8 flex flex-wrap items-center gap-2">
-          <DataLabel>{session.topic}</DataLabel>
-          <Badge variant="outline" className="text-[0.625rem]">
-            {session.difficulty.toLowerCase()}
-          </Badge>
-        </div>
+      <main className={cn(shell, "flex-1 py-10")}>
+        {/* Question prompts are read, not scanned, so they stay at a measure
+            even though the shell around them is wider. */}
+        <Measure>
+          <div className="mb-8 flex flex-wrap items-center gap-2">
+            <DataLabel>{session.topic}</DataLabel>
+            <Badge variant="outline" className="text-[0.625rem]">
+              {session.difficulty.toLowerCase()}
+            </Badge>
+          </div>
 
-        {/* Suspense keeps the shell static; the runner is the dynamic hole. */}
-        <Suspense fallback={<div className="min-h-72" />}>
-          <Runner
-            sessionId={session.id}
-            types={parseTypes(types)}
-            expectedCount={session.questionCount}
-            expiresAt={
-              session.expiresAt ? session.expiresAt.toISOString() : null
-            }
-            trackIntegrity={session.mode === "ASSESSMENT"}
-            adaptive={session.adaptive}
-          />
-        </Suspense>
+          {/* Suspense keeps the shell static; the runner is the dynamic hole. */}
+          <Suspense fallback={<div className="min-h-72" />}>
+            <Runner
+              sessionId={session.id}
+              types={parseTypes(types)}
+              expectedCount={session.questionCount}
+              expiresAt={
+                session.expiresAt ? session.expiresAt.toISOString() : null
+              }
+              trackIntegrity={session.mode === "ASSESSMENT"}
+              adaptive={session.adaptive}
+            />
+          </Suspense>
+        </Measure>
       </main>
     </>
   );

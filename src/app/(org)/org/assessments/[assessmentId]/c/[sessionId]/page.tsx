@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { formatDuration } from "@/components/org/format";
 import { IntegrityChips } from "@/components/org/integrity-chips";
 import { ResultView } from "@/components/session/result-view";
+import { Measure } from "@/components/ui/page";
 import { DataLabel } from "@/components/ui/prose";
 import { getCandidateDetail } from "@/server/dal/org";
 import { getViewer } from "@/server/dal/session";
@@ -24,7 +25,7 @@ export default async function CandidateDetailPage({ params }: Props) {
   const { detail, candidate, assessment } = result;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-10">
+    <Measure className="space-y-10">
       <div>
         <DataLabel>
           <Link
@@ -62,7 +63,7 @@ export default async function CandidateDetailPage({ params }: Props) {
       </div>
 
       <ResultView session={detail} />
-    </div>
+    </Measure>
   );
 }
 

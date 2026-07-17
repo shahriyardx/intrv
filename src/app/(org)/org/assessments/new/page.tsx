@@ -2,6 +2,7 @@ import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { NewAssessmentForm } from "@/components/org/new-assessment-form";
+import { Measure } from "@/components/ui/page";
 import { DataLabel } from "@/components/ui/prose";
 import { getActiveOrg } from "@/server/dal/org";
 
@@ -14,7 +15,7 @@ export default async function NewScreenPage() {
   if (!org || (org.role !== "owner" && org.role !== "admin")) notFound();
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <Measure>
       <DataLabel>
         <Link
           href={"/org" as Route}
@@ -35,6 +36,6 @@ export default async function NewScreenPage() {
       <div className="mt-10">
         <NewAssessmentForm orgId={org.id} />
       </div>
-    </div>
+    </Measure>
   );
 }

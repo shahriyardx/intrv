@@ -8,8 +8,10 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
+import { Measure, shell } from "@/components/ui/page";
 import { DataLabel } from "@/components/ui/prose";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import { getAssessmentByInviteToken } from "@/server/dal/org";
 import { getAuthSession } from "@/server/dal/session";
 import { StartAssessmentForm } from "./start-form";
@@ -34,7 +36,7 @@ export default function InvitePage({ params }: Props) {
       <SiteHeader>
         <SiteNav />
       </SiteHeader>
-      <main className="mx-auto w-full max-w-xl flex-1 px-6 py-14">
+      <main className={cn(shell, "flex-1 py-14")}>
         <Suspense fallback={<InviteSkeleton />}>
           <Invite params={params} />
         </Suspense>
@@ -64,7 +66,7 @@ async function Invite({ params }: Props) {
     : null;
 
   return (
-    <div className="space-y-10">
+    <Measure className="space-y-10">
       <div>
         <DataLabel>{assessment.orgName} · Screening</DataLabel>
         <h1 className="mt-2 font-display text-display-lg">
@@ -103,7 +105,7 @@ async function Invite({ params }: Props) {
         </p>
         <StartAssessmentForm token={token} />
       </div>
-    </div>
+    </Measure>
   );
 }
 
@@ -133,8 +135,10 @@ function Fact({
 }
 
 function InviteSkeleton() {
+  // Same Measure as the real thing, so the content doesn't jump width when it
+  // arrives.
   return (
-    <div className="space-y-10">
+    <Measure className="space-y-10">
       <div className="space-y-3">
         <Skeleton className="h-3 w-40" />
         <Skeleton className="h-9 w-64" />
@@ -142,6 +146,6 @@ function InviteSkeleton() {
       </div>
       <Skeleton className="h-20 w-full" />
       <Skeleton className="h-56 w-full rounded-md" />
-    </div>
+    </Measure>
   );
 }

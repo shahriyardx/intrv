@@ -10,10 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { shell } from "@/components/ui/page";
 import { Progress } from "@/components/ui/progress";
 import { DataLabel, Prose } from "@/components/ui/prose";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Design system" };
 
@@ -45,7 +47,7 @@ export default function DesignPage() {
   if (process.env.NODE_ENV === "production") notFound();
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-16">
+    <main className={cn(shell, "py-16")}>
       <header className="flex items-start justify-between gap-8">
         <div>
           <DataLabel>Design system</DataLabel>

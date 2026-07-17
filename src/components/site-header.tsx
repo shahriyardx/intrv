@@ -1,6 +1,8 @@
 import { PlusIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { shell } from "@/components/ui/page";
+import { cn } from "@/lib/utils";
 
 /**
  * Presentational and deliberately session-blind — it is rendered from server
@@ -12,7 +14,9 @@ import { Button } from "@/components/ui/button";
 export function SiteHeader({ children }: { children?: React.ReactNode }) {
   return (
     <header className="no-print sticky top-0 z-40 border-b bg-background/85 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-6">
+      <div
+        className={cn(shell, "flex h-14 items-center justify-between gap-4")}
+      >
         <Link href="/" className="group flex items-baseline gap-2">
           <span className="font-display text-lg tracking-tight">Intrv</span>
           <span

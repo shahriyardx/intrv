@@ -4,7 +4,9 @@ import { Suspense } from "react";
 import { OrgAccountGate } from "@/components/org/org-account-gate";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
+import { shell } from "@/components/ui/page";
 import { DataLabel } from "@/components/ui/prose";
+import { cn } from "@/lib/utils";
 import { getViewer, signInHere } from "@/server/dal/session";
 import { DashboardNav } from "./nav";
 
@@ -34,7 +36,7 @@ export default function DashboardLayout({
       <SiteHeader>
         <SiteNav />
       </SiteHeader>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
+      <main className={cn(shell, "flex-1 py-10")}>
         <header className="mb-6">
           <DataLabel>Your work</DataLabel>
           <h1 className="mt-2 font-display text-display-lg">Dashboard</h1>

@@ -2,6 +2,7 @@ import { ArrowRightIcon } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Measure } from "@/components/ui/page";
 import { DataLabel, Prose } from "@/components/ui/prose";
 
 export const metadata: Metadata = {
@@ -31,7 +32,7 @@ const NOT = [
 
 export default function AboutPage() {
   return (
-    <>
+    <Measure>
       <DataLabel>About</DataLabel>
       <h1 className="mt-3 font-display text-display-lg text-balance">
         A score is not feedback
@@ -180,6 +181,6 @@ export default function AboutPage() {
           </p>
         </div>
       </section>
-    </>
+    </Measure>
   );
 }

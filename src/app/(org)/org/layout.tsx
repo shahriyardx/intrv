@@ -5,7 +5,9 @@ import { NewAssessmentButton } from "@/components/org/new-assessment-button";
 import { OrgNav } from "@/components/org/org-nav";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
+import { shell } from "@/components/ui/page";
 import { DataLabel } from "@/components/ui/prose";
+import { cn } from "@/lib/utils";
 import { getActiveOrg } from "@/server/dal/org";
 import { getViewer, signInHere } from "@/server/dal/session";
 
@@ -50,7 +52,7 @@ async function OrgShell({ children }: { children: React.ReactNode }) {
       <SiteHeader>
         <SiteNav />
       </SiteHeader>
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
+      <main className={cn(shell, "flex-1 py-10")}>
         {/* One org per account, so the org's own name is the page's title —
             "Organizations" named a list that does not exist. */}
         <header className="mb-6 flex flex-wrap items-end justify-between gap-4">

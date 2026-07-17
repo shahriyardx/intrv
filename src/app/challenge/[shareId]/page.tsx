@@ -6,8 +6,10 @@ import { AcceptChallengeButton } from "@/components/challenge/accept-challenge-b
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
+import { Measure, shell } from "@/components/ui/page";
 import { DataLabel } from "@/components/ui/prose";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import { getChallengeSource } from "@/server/dal/challenge";
 
 type Props = { params: Promise<{ shareId: string }> };
@@ -30,10 +32,12 @@ export default function ChallengePage({ params }: Props) {
       <SiteHeader>
         <SiteNav />
       </SiteHeader>
-      <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
-        <Suspense fallback={<ChallengeSkeleton />}>
-          <ChallengeInvite params={params} />
-        </Suspense>
+      <main className={cn(shell, "flex-1 py-16")}>
+        <Measure>
+          <Suspense fallback={<ChallengeSkeleton />}>
+            <ChallengeInvite params={params} />
+          </Suspense>
+        </Measure>
       </main>
     </>
   );

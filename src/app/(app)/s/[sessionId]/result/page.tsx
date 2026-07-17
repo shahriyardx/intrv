@@ -10,7 +10,9 @@ import { PrintHeader } from "@/components/share/print-header";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
+import { Measure, shell } from "@/components/ui/page";
 import { DataLabel } from "@/components/ui/prose";
+import { cn } from "@/lib/utils";
 import { getAccessibleSession } from "@/server/dal/interview";
 import { getAssessmentGate } from "@/server/dal/org";
 import { getViewer } from "@/server/dal/session";
@@ -43,8 +45,10 @@ export default async function ResultPage(props: {
           <SiteHeader>
             <SiteNav />
           </SiteHeader>
-          <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-            <AssessmentSubmitted orgName={gate.orgName} />
+          <main className={cn(shell, "flex-1 py-10")}>
+            <Measure>
+              <AssessmentSubmitted orgName={gate.orgName} />
+            </Measure>
           </main>
         </>
       );
@@ -56,28 +60,32 @@ export default async function ResultPage(props: {
       <SiteHeader>
         <SiteNav />
       </SiteHeader>
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-        <PrintHeader session={session} />
-        <RematchBanner session={session} />
-        <div className="no-print mb-8 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <DataLabel>Result</DataLabel>
-            <p className="mt-1 font-display text-display-md">{session.topic}</p>
+      <main className={cn(shell, "flex-1 py-10")}>
+        <Measure>
+          <PrintHeader session={session} />
+          <RematchBanner session={session} />
+          <div className="no-print mb-8 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <DataLabel>Result</DataLabel>
+              <p className="mt-1 font-display text-display-md">
+                {session.topic}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <ShareButton sessionId={session.id} shareId={session.shareId} />
+              <ChallengeFriendButton
+                sessionId={session.id}
+                shareId={session.shareId}
+              />
+              <PdfButton />
+              <Button asChild variant="outline" size="sm">
+                <Link href="/start">New interview</Link>
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <ShareButton sessionId={session.id} shareId={session.shareId} />
-            <ChallengeFriendButton
-              sessionId={session.id}
-              shareId={session.shareId}
-            />
-            <PdfButton />
-            <Button asChild variant="outline" size="sm">
-              <Link href="/start">New interview</Link>
-            </Button>
-          </div>
-        </div>
 
-        <ResultView session={session} />
+          <ResultView session={session} />
+        </Measure>
       </main>
     </>
   );

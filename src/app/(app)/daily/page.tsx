@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Measure, shell } from "@/components/ui/page";
 import { DataLabel, Prose } from "@/components/ui/prose";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -33,24 +34,26 @@ export default function DailyPage() {
       <SiteHeader>
         <SiteNav />
       </SiteHeader>
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-14">
-        <DataLabel>Daily challenge</DataLabel>
-        <h1 className="mt-3 font-display text-display-lg">
-          One challenge. Everyone. Today.
-        </h1>
-        <Prose className="mt-4 text-muted-foreground">
-          <p>
-            Ten questions on today's topic, ten minutes on the clock — the same
-            set for every player, worldwide. Faster times break ties. A new
-            challenge is written at 00:00 UTC and the board starts over.
-          </p>
-        </Prose>
+      <main className={cn(shell, "flex-1 py-14")}>
+        <Measure>
+          <DataLabel>Daily challenge</DataLabel>
+          <h1 className="mt-3 font-display text-display-lg">
+            One challenge. Everyone. Today.
+          </h1>
+          <Prose className="mt-4 text-muted-foreground">
+            <p>
+              Ten questions on today's topic, ten minutes on the clock — the
+              same set for every player, worldwide. Faster times break ties. A
+              new challenge is written at 00:00 UTC and the board starts over.
+            </p>
+          </Prose>
 
-        {/* The session and the day's set are the dynamic hole; the copy above
+          {/* The session and the day's set are the dynamic hole; the copy above
             stays a static shell. */}
-        <Suspense fallback={<DailySkeleton />}>
-          <DailyBody />
-        </Suspense>
+          <Suspense fallback={<DailySkeleton />}>
+            <DailyBody />
+          </Suspense>
+        </Measure>
       </main>
     </>
   );

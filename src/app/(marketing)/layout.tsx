@@ -1,10 +1,14 @@
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
+import { shell } from "@/components/ui/page";
+import { cn } from "@/lib/utils";
 
 /**
- * The read-me pages: about and the two legal ones. They are prose at a reading
- * measure, so the shell caps width here rather than in every page.
+ * The read-me pages plus the leaderboard. The layout owns the shell and the
+ * <main>; each page picks its own measure, because they are not all prose — the
+ * leaderboard is a table and wants the full width the rest of them must not
+ * take.
  */
 export default function MarketingLayout({
   children,
@@ -16,9 +20,7 @@ export default function MarketingLayout({
       <SiteHeader>
         <SiteNav />
       </SiteHeader>
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-16 sm:py-20">
-        {children}
-      </main>
+      <main className={cn(shell, "flex-1 py-16 sm:py-20")}>{children}</main>
       <SiteFooter />
     </>
   );

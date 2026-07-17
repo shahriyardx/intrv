@@ -7,6 +7,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
+import { Measure } from "@/components/ui/page";
 import { DataLabel, Prose } from "@/components/ui/prose";
 import { cn } from "@/lib/utils";
 import {
@@ -25,19 +26,25 @@ export const metadata: Metadata = {
     "Who has practised the most, weighted by how hard they made it on themselves.",
 };
 
+// No <main> here: the marketing layout owns it, and a second one nested inside
+// it was invalid.
 export default function LeaderboardPage() {
   return (
-    <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-14">
+    <>
       <DataLabel>Global</DataLabel>
       <h1 className="mt-3 font-display text-display-lg">Leaderboard</h1>
-      <Prose className="mt-4 text-muted-foreground">
-        <p>
-          Points are a graded interview's score times how hard it was times how
-          long it was. A hard twenty-question interview is worth a lot more than
-          a perfect five-question easy one, so this rewards practising rather
-          than farming the easy setting.
-        </p>
-      </Prose>
+      {/* Only the explanation is capped — the board below it is a table and
+          uses the full shell. */}
+      <Measure>
+        <Prose className="mt-4 text-muted-foreground">
+          <p>
+            Points are a graded interview's score times how hard it was times
+            how long it was. A hard twenty-question interview is worth a lot
+            more than a perfect five-question easy one, so this rewards
+            practising rather than farming the easy setting.
+          </p>
+        </Prose>
+      </Measure>
 
       <p className="mt-4 font-mono text-[0.6875rem] text-muted-foreground uppercase tracking-[0.12em]">
         score × difficulty (easy ×1 · medium ×1.5 · hard ×2) × questions ÷ 10
@@ -71,7 +78,7 @@ export default function LeaderboardPage() {
       <Suspense fallback={<BoardSkeleton />}>
         <Board />
       </Suspense>
-    </main>
+    </>
   );
 }
 

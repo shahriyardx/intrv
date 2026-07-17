@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { ContactForm } from "@/components/marketing/contact-form";
+import { Measure } from "@/components/ui/page";
 import { DataLabel, Prose } from "@/components/ui/prose";
 import { Skeleton } from "@/components/ui/skeleton";
 import { issueContactToken } from "@/server/dal/contact";
@@ -33,7 +34,7 @@ const EXPECTATIONS = [
 
 export default function ContactPage() {
   return (
-    <>
+    <Measure>
       <DataLabel>Contact</DataLabel>
       <h1 className="mt-3 font-display text-display-lg text-balance">
         Tell us what went wrong
@@ -79,7 +80,7 @@ export default function ContactPage() {
           ))}
         </dl>
       </section>
-    </>
+    </Measure>
   );
 }
 

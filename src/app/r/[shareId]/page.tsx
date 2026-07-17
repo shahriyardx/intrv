@@ -9,7 +9,9 @@ import { ScoreCard } from "@/components/share/score-card";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
+import { Measure, shell } from "@/components/ui/page";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import { getSharedSession } from "@/server/dal/share";
 
 type Props = { params: Promise<{ shareId: string }> };
@@ -43,10 +45,12 @@ export default function SharedResultPage({ params }: Props) {
       <SiteHeader>
         <SiteNav />
       </SiteHeader>
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-        <Suspense fallback={<SharedResultSkeleton />}>
-          <SharedResult params={params} />
-        </Suspense>
+      <main className={cn(shell, "flex-1 py-10")}>
+        <Measure>
+          <Suspense fallback={<SharedResultSkeleton />}>
+            <SharedResult params={params} />
+          </Suspense>
+        </Measure>
       </main>
     </>
   );

@@ -4,8 +4,10 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
+import { Measure, shell } from "@/components/ui/page";
 import { DataLabel, Prose } from "@/components/ui/prose";
 import { prisma } from "@/lib/db";
+import { cn } from "@/lib/utils";
 import { getViewer } from "@/server/dal/session";
 import { AcceptInvite } from "./accept-invite";
 
@@ -30,12 +32,14 @@ export default function JoinPage({ params }: Props) {
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-6 py-16">
+      <main className={cn(shell, "flex flex-1 flex-col justify-center py-16")}>
         {/* Everything below is runtime IO — the invite row and the session —
             so it is the dynamic hole and the header above is the static shell. */}
-        <Suspense fallback={<div className="min-h-64" />}>
-          <Invitation params={params} />
-        </Suspense>
+        <Measure>
+          <Suspense fallback={<div className="min-h-64" />}>
+            <Invitation params={params} />
+          </Suspense>
+        </Measure>
       </main>
     </>
   );

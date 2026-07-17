@@ -48,9 +48,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  */
 export default function BlogPostPage({ params }: Props) {
   return (
-    // The (marketing) layout owns the page padding and caps at max-w-3xl; this
-    // narrows further to a reading measure without fighting it.
-    <article className="mx-auto w-full max-w-2xl">
+    // The (marketing) layout owns the shell and the padding; this is the
+    // reading measure inside it.
+    <article className="w-full max-w-3xl">
       <Suspense fallback={<PostSkeleton />}>
         <Post params={params} />
       </Suspense>

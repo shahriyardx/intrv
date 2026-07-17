@@ -6,6 +6,7 @@ import {
   LegalSection,
   ShortVersion,
 } from "@/components/marketing/legal";
+import { Measure } from "@/components/ui/page";
 
 export const metadata: Metadata = {
   title: "Terms",
@@ -42,7 +43,7 @@ const ACCEPTABLE = [
 
 export default function TermsPage() {
   return (
-    <>
+    <Measure>
       <LegalHeader label="Terms" title="Terms of service" updated={UPDATED}>
         <p className="mt-6 max-w-[68ch] text-pretty leading-relaxed text-muted-foreground">
           Using Intrv means agreeing to what's below. It's free, so this is
@@ -198,6 +199,6 @@ export default function TermsPage() {
           <Link href="/contact">get in touch</Link>.
         </p>
       </LegalSection>
-    </>
+    </Measure>
   );
 }

@@ -3,6 +3,7 @@ import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Measure } from "@/components/ui/page";
 import { DataLabel } from "@/components/ui/prose";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listPublishedPosts, type PublicPostListItem } from "@/server/dal/blog";
@@ -35,9 +36,9 @@ function formatPostDate(date: Date): string {
  */
 export default function BlogIndexPage() {
   return (
-    // The (marketing) layout owns the page padding and caps at max-w-3xl; this
-    // narrows further to a reading measure without fighting it.
-    <div className="mx-auto w-full max-w-2xl">
+    // The (marketing) layout owns the shell and the padding; this is the
+    // reading measure inside it.
+    <Measure>
       <header className="mb-12">
         <DataLabel>Writing</DataLabel>
         <h1 className="mt-2 font-display text-display-lg text-balance">Blog</h1>
@@ -50,7 +51,7 @@ export default function BlogIndexPage() {
       <Suspense fallback={<PostListSkeleton />}>
         <PostList />
       </Suspense>
-    </div>
+    </Measure>
   );
 }
 

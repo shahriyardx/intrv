@@ -3,7 +3,9 @@ import { Suspense } from "react";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
+import { shell } from "@/components/ui/page";
 import { DataLabel } from "@/components/ui/prose";
+import { cn } from "@/lib/utils";
 import { getAdminViewer } from "@/server/dal/admin";
 
 /**
@@ -48,7 +50,7 @@ async function AdminShell({ children }: { children: React.ReactNode }) {
       <SiteHeader>
         <SiteNav />
       </SiteHeader>
-      <div className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
+      <div className={cn(shell, "flex-1 py-10")}>
         <header className="mb-6">
           <DataLabel>Internal</DataLabel>
           <h1 className="mt-1 font-display text-lg">Admin</h1>

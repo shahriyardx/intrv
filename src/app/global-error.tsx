@@ -3,6 +3,8 @@
 import type { CSSProperties } from "react";
 import { useEffect } from "react";
 import "./globals.css";
+import { shell } from "@/components/ui/page";
+import { cn } from "@/lib/utils";
 
 /**
  * Replaces the root layout, so everything it set up is gone: no font variables,
@@ -33,7 +35,12 @@ export default function GlobalError({
         {/* metadata exports don't work in an error boundary; React renders the
             title tag instead. */}
         <title>Something went wrong · Intrv</title>
-        <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 py-24 text-center">
+        <main
+          className={cn(
+            shell,
+            "flex flex-1 flex-col items-center justify-center py-24 text-center",
+          )}
+        >
           <span className="font-mono text-[0.6875rem] uppercase tracking-[0.12em] text-muted-foreground">
             Error
           </span>
