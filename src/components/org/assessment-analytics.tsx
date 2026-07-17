@@ -61,28 +61,9 @@ export function ScoreDistribution({
             } so far — read the shape once more candidates have taken it.`
           : "How the whole cohort scored. An assessment where everyone lands in one band isn't separating candidates."
       }
-      table={
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Score band</TableHead>
-              <TableHead className="text-right">Candidates</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {analytics.distribution.map((bucket) => (
-              <TableRow key={bucket.label}>
-                <TableCell className="font-mono text-xs">
-                  {bucket.label}%
-                </TableCell>
-                <TableCell className="text-right font-mono tabular">
-                  {bucket.count}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      }
+      // No table twin here: RankedBars is already a list of labels and counts
+      // as text, so the table restated it row for row. The dashboard's SVG
+      // charts still need theirs.
     >
       <div className="space-y-6">
         <dl className="flex flex-wrap gap-x-10 gap-y-3">

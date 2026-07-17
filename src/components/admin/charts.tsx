@@ -305,12 +305,11 @@ export function RankedBars({
               ) : null}
             </span>
           </div>
-          <div className="h-1.5 w-full bg-muted">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full rounded-r-[4px]"
+              className="h-full rounded-full"
               style={{
-                width:
-                  max === 0 ? "1%" : `${Math.max((row.value / max) * 100, 1)}%`,
+                width: barWidth(row.value, max),
                 background: `var(${colorVar})`,
               }}
             />
@@ -319,6 +318,18 @@ export function RankedBars({
       ))}
     </ul>
   );
+}
+
+/**
+ * The 1% floor keeps a real-but-tiny value visible — a $0.002 row against a $12
+ * max would otherwise round to nothing. It must never apply to zero, though: a
+ * bar drawn for no data reads as "a few", which is the one thing the reader is
+ * here to tell apart. Exported for that test.
+ */
+export function barWidth(value: number, max: number): string {
+  if (value <= 0 || max <= 0) return "0%";
+
+  return `${Math.max((value / max) * 100, 1)}%`;
 }
 
 export function ChartCard({
