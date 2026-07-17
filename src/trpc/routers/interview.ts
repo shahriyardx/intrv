@@ -63,18 +63,25 @@ type GenSession = {
   brief: string | null;
 };
 
-/** Records why a session couldn't finish generating so the page can explain itself. */
-async function markFailed(sessionId: string, error: unknown): Promise<void> {
-  await prisma.interviewSession.update({
-    where: { id: sessionId },
-    data: {
-      status: "FAILED",
-      error:
-        error instanceof AiError && error.code === "insufficient_balance"
-          ? "Question generation is unavailable right now. Please try again later."
-          : "We couldn't generate questions for this topic. Try rephrasing it.",
-    },
-  });
+/**
+ * A session that couldn't generate is our failure, not the user's work, so it
+ * is deleted rather than kept as a FAILED row: it must never count as an
+ * interview taken, never appear in history, and leave nothing to sweep. The
+ * cascade removes its questions and answers; the AiCall telemetry survives (its
+ * sessionId is SetNull, not cascaded), so the failure is still visible in admin
+ * AI usage. The live runner renders its own error from the stream and does not
+ * re-read the row, so deleting it does not affect what the user is watching.
+ */
+async function discardFailedSession(
+  sessionId: string,
+  error: unknown,
+): Promise<void> {
+  console.error(`generation failed for session ${sessionId}:`, error);
+  // Guard the delete: the row may already be gone (e.g. the account was deleted
+  // mid-generation), and a missing-row error here must not mask the real cause.
+  await prisma.interviewSession
+    .delete({ where: { id: sessionId } })
+    .catch(() => {});
 }
 
 /**
@@ -392,7 +399,7 @@ export const interviewRouter = createTRPCRouter({
           yield* streamStandard(gen, input.types, signal);
         }
       } catch (error) {
-        await markFailed(session.id, error);
+        await discardFailedSession(session.id, error);
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Generation failed",

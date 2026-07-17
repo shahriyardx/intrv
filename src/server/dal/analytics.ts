@@ -289,7 +289,11 @@ export async function getOverviewStats(viewer: Viewer): Promise<OverviewStats> {
   }
 
   const [totalSessions, graded, questionsAnswered, topics] = await Promise.all([
-    prisma.interviewSession.count({ where: owner }),
+    // Failed generations are deleted at the source, but exclude them here too so
+    // a legacy or mid-flight FAILED row never inflates "interviews taken".
+    prisma.interviewSession.count({
+      where: { ...owner, status: { not: "FAILED" } },
+    }),
     prisma.interviewSession.aggregate({
       where: { ...owner, ...gradedSession },
       _avg: { score: true },

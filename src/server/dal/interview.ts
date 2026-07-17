@@ -153,7 +153,9 @@ export async function listSessions(
   const limit = Math.min(opts.limit ?? 20, 50);
 
   const rows = await prisma.interviewSession.findMany({
-    where: owner,
+    // Failed generations are deleted at the source; excluded here too so any
+    // legacy or mid-flight FAILED row never surfaces in history.
+    where: { ...owner, status: { not: "FAILED" } },
     orderBy: { createdAt: "desc" },
     take: limit + 1,
     ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
