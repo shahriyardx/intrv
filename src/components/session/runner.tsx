@@ -61,6 +61,33 @@ export function Runner({
     ),
   );
 
+  // A live session has no expiresAt at page-load: streamStandard/streamAdaptive
+  // set it once generation has started, deliberately, so the clock doesn't tick
+  // while questions are still being written. The prop is therefore null for
+  // those, and the timer would never appear. Once the stream has produced
+  // something, re-read the session to pick up the deadline the server just set.
+  // Pre-seeded sessions (DAILY/ASSESSMENT) already carry it in the prop, so this
+  // query stays disabled for them.
+  const hasStarted = (data?.length ?? 0) > 0;
+  const timing = useQuery(
+    trpc.interview.get.queryOptions(
+      { sessionId },
+      {
+        // streamStandard writes expiresAt only after the last question, while
+        // streamAdaptive writes it at the first batch — so poll from the moment
+        // anything arrives and stop the instant a deadline shows up.
+        enabled: expiresAt === null && hasStarted,
+        refetchInterval: (query) =>
+          query.state.data?.expiresAt ? false : 2000,
+        staleTime: Number.POSITIVE_INFINITY,
+        retry: false,
+      },
+    ),
+  );
+  const deadline = expiresAt
+    ? new Date(expiresAt)
+    : (timing.data?.expiresAt ?? null);
+
   const questions = data ?? [];
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<string, AnswerResponse>>({});
@@ -203,8 +230,8 @@ export function Runner({
                   : `writing ${questions.length}/${expectedCount}`}
               </span>
             ) : null}
-            {expiresAt ? (
-              <Timer expiresAt={new Date(expiresAt)} onExpire={onExpire} />
+            {deadline ? (
+              <Timer expiresAt={deadline} onExpire={onExpire} />
             ) : null}
           </div>
         </div>
