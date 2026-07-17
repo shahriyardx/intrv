@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { OrgNav } from "@/components/org/org-nav";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
 import { DataLabel } from "@/components/ui/prose";
@@ -46,10 +47,13 @@ async function OrgShell({ children }: { children: React.ReactNode }) {
         <SiteNav />
       </SiteHeader>
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
-        <header className="mb-8">
+        <header className="mb-6">
           <DataLabel>For recruiters</DataLabel>
           <h1 className="mt-1 font-display text-lg">Organizations</h1>
         </header>
+        <div className="mb-8">
+          <OrgNav />
+        </div>
         {children}
       </main>
     </>

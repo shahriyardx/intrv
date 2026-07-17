@@ -452,7 +452,7 @@ export async function getScreenGate(
 }
 
 /** Integrity is a client-reported JSON blob; validate before trusting it. */
-function parseIntegrity(
+export function parseIntegrity(
   raw: unknown,
 ): { blurs: number; pastes: number } | null {
   if (raw == null) return null;

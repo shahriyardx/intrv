@@ -2,9 +2,14 @@ import { UsersThreeIcon } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { StatRow, StatTile } from "@/components/analytics/stat-tile";
 import { formatDuration } from "@/components/org/format";
 import { IntegrityChips } from "@/components/org/integrity-chips";
 import { InviteLink } from "@/components/org/invite-link";
+import {
+  QuestionQuality,
+  ScoreDistribution,
+} from "@/components/org/screen-analytics";
 import { ScreenControls } from "@/components/org/screen-controls";
 import { Badge } from "@/components/ui/badge";
 import { DataLabel } from "@/components/ui/prose";
@@ -18,9 +23,15 @@ import {
 } from "@/components/ui/table";
 import { env } from "@/lib/env";
 import { getScreenReport } from "@/server/dal/org";
+import { getScreenAnalytics } from "@/server/dal/org-analytics";
 import { getViewer } from "@/server/dal/session";
 
 type Props = { params: Promise<{ screenId: string }> };
+
+/** The share of the cohort this candidate outscored. Ungraded attempts have none. */
+function percentileLabel(percentile: number | undefined): string {
+  return percentile === undefined ? "—" : `beats ${percentile}%`;
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { screenId } = await params;
@@ -33,11 +44,17 @@ export default async function ScreenReportPage({ params }: Props) {
   const { screenId } = await params;
   const viewer = await getViewer();
 
-  const report = await getScreenReport(viewer, screenId);
+  const [report, analytics] = await Promise.all([
+    getScreenReport(viewer, screenId),
+    getScreenAnalytics(viewer, screenId),
+  ]);
   if (!report) notFound();
 
   const { screen, candidates, canManage } = report;
   const inviteUrl = `${env.BETTER_AUTH_URL}/i/${screen.inviteToken}`;
+
+  // A percentile against a cohort of one says "100th" and means nothing.
+  const showPercentile = (analytics?.graded ?? 0) >= 5;
 
   return (
     <div className="space-y-10">
@@ -90,6 +107,54 @@ export default async function ScreenReportPage({ params }: Props) {
         ) : null}
       </section>
 
+      {analytics && analytics.started > 0 ? (
+        <>
+          <section className="space-y-6">
+            <StatRow>
+              <StatTile
+                label="Attempts"
+                value={analytics.started}
+                note={`${analytics.submitted} submitted · ${analytics.inProgress} in progress`}
+              />
+              <StatTile
+                label="Abandoned"
+                value={analytics.abandoned}
+                // Only counts attempts that can no longer plausibly be running,
+                // so an in-flight candidate never inflates it.
+                note="Started, ran out of time, never submitted"
+                tone={
+                  analytics.submitted + analytics.abandoned >= 5 &&
+                  analytics.abandoned >
+                    (analytics.submitted + analytics.abandoned) * 0.3
+                    ? "warning"
+                    : "default"
+                }
+              />
+              <StatTile
+                label="Median time"
+                value={formatDuration(analytics.medianDurationMs)}
+                note={
+                  screen.timeLimitMs
+                    ? `of ${Math.round(screen.timeLimitMs / 60_000)} min · ${
+                        analytics.hitLimit
+                      } ran out`
+                    : "No time limit"
+                }
+              />
+              <StatTile
+                label="Flagged"
+                value={analytics.flagged}
+                note="Focus loss or paste — indicative, not proof"
+                tone={analytics.flagged > 0 ? "warning" : "default"}
+              />
+            </StatRow>
+          </section>
+
+          <ScoreDistribution analytics={analytics} />
+          <QuestionQuality questions={analytics.questions} />
+        </>
+      ) : null}
+
       <section className="space-y-4">
         <div className="flex items-baseline justify-between gap-4">
           <DataLabel as="h3">Candidates</DataLabel>
@@ -121,6 +186,9 @@ export default async function ScreenReportPage({ params }: Props) {
                 <TableHead>Email</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Score</TableHead>
+                {showPercentile ? (
+                  <TableHead className="text-right">Vs cohort</TableHead>
+                ) : null}
                 <TableHead className="text-right">Duration</TableHead>
                 <TableHead>Signals</TableHead>
               </TableRow>
@@ -153,6 +221,11 @@ export default async function ScreenReportPage({ params }: Props) {
                     <TableCell className="text-right font-mono tabular">
                       {c.score === null ? "—" : `${Math.round(c.score)}%`}
                     </TableCell>
+                    {showPercentile ? (
+                      <TableCell className="text-right font-mono text-muted-foreground text-xs tabular">
+                        {percentileLabel(analytics?.percentiles.get(c.id))}
+                      </TableCell>
+                    ) : null}
                     <TableCell className="text-right font-mono text-muted-foreground tabular">
                       {formatDuration(c.durationMs)}
                     </TableCell>
