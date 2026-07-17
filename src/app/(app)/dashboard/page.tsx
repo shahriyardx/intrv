@@ -7,6 +7,7 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ActivityHeatmap } from "@/components/analytics/activity-heatmap";
 import { formatScore } from "@/components/analytics/format";
 import { ReviewNowButton } from "@/components/analytics/review-now-button";
 import {
@@ -20,7 +21,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { DataLabel, Prose } from "@/components/ui/prose";
 import { getOverviewStats, getWeakConcepts } from "@/server/dal/analytics";
 import { listSessions } from "@/server/dal/interview";
-import { getDueReviewCount, getMomentum } from "@/server/dal/learning";
+import {
+  getActivityCalendar,
+  getDueReviewCount,
+  getMomentum,
+} from "@/server/dal/learning";
 import { getViewer } from "@/server/dal/session";
 
 export const metadata: Metadata = { title: "Overview" };
@@ -28,15 +33,15 @@ export const metadata: Metadata = { title: "Overview" };
 export default async function DashboardPage() {
   const viewer = await getViewer();
 
-  const [stats, weakConcepts, recent, momentum, dueReviews] = await Promise.all(
-    [
+  const [stats, weakConcepts, recent, momentum, dueReviews, calendar] =
+    await Promise.all([
       getOverviewStats(viewer),
       getWeakConcepts(viewer, { limit: 5 }),
       listSessions(viewer, { limit: 5 }),
       getMomentum(viewer),
       getDueReviewCount(viewer),
-    ],
-  );
+      getActivityCalendar(viewer),
+    ]);
 
   if (stats.totalSessions === 0) {
     return (
@@ -144,6 +149,17 @@ export default async function DashboardPage() {
               : `${dueReviews === 1 ? "concept" : "concepts"} waiting`
           }
         />
+      </section>
+
+      <section className="space-y-5">
+        <div className="flex items-baseline justify-between gap-4">
+          <DataLabel as="h2">Activity</DataLabel>
+          <span className="font-mono text-muted-foreground text-xs">
+            {calendar.total} graded in the last year · {calendar.activeDays}{" "}
+            {calendar.activeDays === 1 ? "day" : "days"} active
+          </span>
+        </div>
+        <ActivityHeatmap calendar={calendar} />
       </section>
 
       {dueReviews > 0 ? (

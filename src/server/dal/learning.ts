@@ -3,6 +3,10 @@ import { prisma } from "@/lib/db";
 import type { Difficulty } from "@/lib/schemas";
 import { DIFFICULTY_MULTIPLIER } from "@/server/dal/leaderboard";
 import { ownerWhere, type Viewer } from "@/server/dal/owner";
+import {
+  type ActivityCalendar,
+  buildActivityCalendar,
+} from "@/server/learning/activity";
 import { computeStreaks, utcDayIndex } from "@/server/learning/momentum";
 import { addDays } from "@/server/learning/scheduling";
 
@@ -171,6 +175,48 @@ export async function getMomentum(viewer: Viewer): Promise<Momentum> {
   );
 
   return { currentStreak: current, longestStreak: longest, xp: Math.round(xp) };
+}
+
+/** Weeks in the heatmap window — a year plus the ragged current week. */
+const CALENDAR_WEEKS = 53;
+
+/**
+ * Per-day graded-session counts for the activity heatmap, same population as
+ * getMomentum (graded, non-ASSESSMENT, owned) so the calendar and the streak
+ * agree on which days count. Bounded to one user's history, and further to the
+ * window, so it never touches the whole table.
+ */
+export async function getActivityCalendar(
+  viewer: Viewer,
+): Promise<ActivityCalendar> {
+  const todayIndex = utcDayIndex(new Date());
+
+  const owner = ownerWhere(viewer);
+  if (!owner) {
+    return buildActivityCalendar(new Map(), todayIndex, CALENDAR_WEEKS);
+  }
+
+  // Only fetch the window: the grid starts at most 53 weeks + 6 days back.
+  const since = new Date((todayIndex - CALENDAR_WEEKS * 7) * 86_400_000);
+
+  const sessions = await prisma.interviewSession.findMany({
+    where: {
+      userId: owner.userId,
+      status: "GRADED",
+      gradedAt: { not: null, gte: since },
+      mode: { not: "ASSESSMENT" },
+    },
+    select: { gradedAt: true },
+  });
+
+  const counts = new Map<number, number>();
+  for (const s of sessions) {
+    if (!s.gradedAt) continue;
+    const day = utcDayIndex(s.gradedAt);
+    counts.set(day, (counts.get(day) ?? 0) + 1);
+  }
+
+  return buildActivityCalendar(counts, todayIndex, CALENDAR_WEEKS);
 }
 
 // ---------------------------------------------------------------------------
