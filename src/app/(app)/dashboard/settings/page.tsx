@@ -8,6 +8,7 @@ import { getViewer } from "@/server/dal/session";
 import { DeleteAccount } from "./delete-account";
 import { LeaderboardToggle } from "./leaderboard-toggle";
 import { NameForm } from "./name-form";
+import { UsernameForm } from "./username-form";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -28,6 +29,10 @@ export default async function SettingsPage() {
       <section className="space-y-4">
         <DataLabel>Profile</DataLabel>
         <NameForm name={profile.name} />
+        <UsernameForm
+          username={profile.username}
+          changed={profile.usernameChanged}
+        />
       </section>
 
       <Separator />

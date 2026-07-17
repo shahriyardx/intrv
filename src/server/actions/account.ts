@@ -7,6 +7,7 @@ import { z } from "zod";
 import { DELETE_CONFIRMATION } from "@/app/(app)/dashboard/settings/confirmation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { usernameMessage, usernameProblem } from "@/lib/username";
 import { getViewer } from "@/server/dal/session";
 
 /**
@@ -64,6 +65,87 @@ export async function updateDisplayName(
   revalidatePath("/", "layout");
 
   return { status: "saved", name: parsed.data };
+}
+
+export type UsernameState =
+  | { status: "idle" }
+  | { status: "saved"; username: string }
+  | { status: "error"; error: string };
+
+/**
+ * A username may be changed exactly once. The `usernameChanged` flag is ours,
+ * checked here in the DB (not the cookie cache) so a stale session can't be used
+ * to change twice. On success the write goes through better-auth's updateUser —
+ * which runs the username plugin's validation and uniqueness check and refreshes
+ * the session cookie — and only then do we set the lock.
+ */
+export async function changeUsername(
+  _prev: UsernameState,
+  formData: FormData,
+): Promise<UsernameState> {
+  const viewer = await getViewer();
+  if (viewer.kind !== "user") {
+    return { status: "error", error: "You're signed out." };
+  }
+
+  const raw = String(formData.get("username") ?? "").trim();
+  const problem = usernameProblem(raw);
+  if (problem) {
+    return {
+      status: "error",
+      error: usernameMessage(problem) ?? "Invalid username.",
+    };
+  }
+  const username = raw.toLowerCase();
+
+  const user = await prisma.user.findUnique({
+    where: { id: viewer.userId },
+    select: { username: true, usernameChanged: true },
+  });
+  if (!user) return { status: "error", error: "Your account is gone." };
+  if (user.usernameChanged) {
+    return {
+      status: "error",
+      error: "You've already changed your username once.",
+    };
+  }
+  if (user.username === username) {
+    return { status: "error", error: "That's already your username." };
+  }
+
+  // Taken by someone else? The unique index is the real guard; this is the
+  // friendly message before hitting it.
+  const clash = await prisma.user.findUnique({
+    where: { username },
+    select: { id: true },
+  });
+  if (clash) {
+    return { status: "error", error: "That username is taken." };
+  }
+
+  try {
+    await auth.api.updateUser({
+      headers: await headers(),
+      body: { username, displayUsername: raw },
+    });
+  } catch {
+    // The plugin rejects on its own validation or a race on the unique index.
+    return {
+      status: "error",
+      error: "That username isn't available. Try another.",
+    };
+  }
+
+  // Our flag, which better-auth doesn't know about — set it only after the
+  // handle actually changed, so a failed update never burns the one change.
+  await prisma.user.update({
+    where: { id: viewer.userId },
+    data: { usernameChanged: true },
+  });
+
+  revalidatePath("/", "layout");
+
+  return { status: "saved", username };
 }
 
 export async function deleteAccount(

@@ -258,6 +258,15 @@ These are all verified against the installed packages — not guesses.
   with role `owner` that the plugin creates for the creator. The "3 owned orgs"
   cap and slug `-2`/`-3` suffixing live in `src/server/actions/org.ts` on top of
   `auth.api.createOrganization`, which otherwise just rejects a taken slug.
+  The `username` plugin adds `User.username` (unique, normalized lowercase) and
+  `User.displayUsername` (cased). Every account gets a random readable handle at
+  creation via the `databaseHooks.user.create.before` in `auth.ts`
+  (`generateUsername` from `src/lib/username.ts`). `User.usernameChanged` is
+  **ours, not the plugin's** — it enforces the once-only change and is checked in
+  the DB (not the cookie cache) by `changeUsername` in `actions/account.ts`. The
+  validator, reserved-name set, length bounds, and generator all live in
+  `src/lib/username.ts` (import-free, unit-tested) so the plugin, the settings
+  form, and the migration backfill can never disagree.
 
 ### tRPC + cacheComponents (verified by spike, 2026-07-16)
 

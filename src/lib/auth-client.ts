@@ -1,6 +1,7 @@
 import {
   inferAdditionalFields,
   organizationClient,
+  usernameClient,
 } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 import type { auth } from "@/lib/auth";
@@ -16,6 +17,8 @@ export const authClient = createAuthClient({
     // is no server action that could act for them. Everything else an org does
     // goes through a Server Action that re-checks membership.
     organizationClient(),
+    // Availability check for the settings form (authClient.isUsernameAvailable).
+    usernameClient(),
   ],
 });
 

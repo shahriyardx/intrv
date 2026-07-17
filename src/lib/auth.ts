@@ -1,9 +1,34 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
-import { admin, organization } from "better-auth/plugins";
+import { admin, organization, username } from "better-auth/plugins";
 import { prisma } from "@/lib/db";
 import { env, isGoogleOAuthEnabled } from "@/lib/env";
+import {
+  generateUsername,
+  isValidUsername,
+  USERNAME_MAX,
+  USERNAME_MIN,
+} from "@/lib/username";
+
+/**
+ * A readable random handle, guaranteed free. The plugin's unique constraint is
+ * the real guarantee; this just avoids losing the create on a collision, which
+ * at ~10k options per word-pair is rare. Bounded loop so a pathologically full
+ * namespace can't spin forever — the last candidate carries entropy enough that
+ * the DB constraint, not this, is what would ever reject it.
+ */
+async function freeUsername(): Promise<string> {
+  for (let i = 0; i < 8; i++) {
+    const candidate = generateUsername();
+    const taken = await prisma.user.findUnique({
+      where: { username: candidate },
+      select: { id: true },
+    });
+    if (!taken) return candidate;
+  }
+  return generateUsername();
+}
 
 export const auth = betterAuth({
   appName: "Intrv",
@@ -49,8 +74,35 @@ export const auth = betterAuth({
     },
   },
 
+  // Assign a random username to every new account (email or OAuth) when one
+  // wasn't supplied — sign-up never asks for one. Runs before the row is
+  // written, alongside the username plugin's own create hook.
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => {
+          const u = user as typeof user & { username?: string | null };
+          if (u.username) return;
+          const handle = await freeUsername();
+          return {
+            data: { ...user, username: handle, displayUsername: handle },
+          };
+        },
+      },
+    },
+  },
+
   plugins: [
     admin({ defaultRole: "user", adminRoles: ["admin"] }),
+    // Adds the unique `username` + `displayUsername` fields, the
+    // is-username-available endpoint, and username validation. 5-20 chars,
+    // lowercase letters/digits/hyphens, no reserved names — the same rules the
+    // settings form and the generator share via lib/username.ts.
+    username({
+      minUsernameLength: USERNAME_MIN,
+      maxUsernameLength: USERNAME_MAX,
+      usernameValidator: (value) => isValidUsername(value),
+    }),
     // First-party organizations: owns the organization/member/invitation tables
     // and adds session.activeOrganizationId. Default roles owner/admin/member
     // match what the org DAL checks. The "3 owned orgs" cap and slug suffixing

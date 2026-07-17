@@ -470,6 +470,9 @@ export type AccountProfile = {
   name: string;
   email: string;
   createdAt: Date;
+  /** Display-cased handle; the settings form shows this and the once-only flag. */
+  username: string | null;
+  usernameChanged: boolean;
   /** Drives the leaderboard toggle: the board is public and on by default. */
   leaderboardOptOut: boolean;
 };
@@ -486,9 +489,22 @@ export async function getAccountProfile(
       name: true,
       email: true,
       createdAt: true,
+      displayUsername: true,
+      username: true,
+      usernameChanged: true,
       leaderboardOptOut: true,
     },
   });
 
-  return user;
+  if (!user) return null;
+
+  return {
+    name: user.name,
+    email: user.email,
+    createdAt: user.createdAt,
+    // Prefer the cased display handle; fall back to the normalized one.
+    username: user.displayUsername ?? user.username,
+    usernameChanged: user.usernameChanged,
+    leaderboardOptOut: user.leaderboardOptOut,
+  };
 }

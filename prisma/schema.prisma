@@ -27,6 +27,17 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // username plugin: `username` is the normalized (lowercased) unique handle;
+  // `displayUsername` preserves the casing the user typed. Both are optional in
+  // the plugin's schema; every user gets one assigned at creation (a random
+  // handle) via the databaseHook in auth.ts. Maintained here by hand because the
+  // better-auth CLI can't parse our server-only config.
+  username        String? @unique
+  displayUsername String?
+  /// Ours, not better-auth's: a username may be changed exactly once. Set true
+  /// the first time the user picks a custom handle, after which the field locks.
+  usernameChanged Boolean @default(false)
+
   // admin plugin
   role       String?
   banned     Boolean?  @default(false)
