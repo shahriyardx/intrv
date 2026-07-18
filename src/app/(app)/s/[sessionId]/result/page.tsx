@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ChallengeFriendButton } from "@/components/challenge/challenge-friend-button";
 import { RematchBanner } from "@/components/challenge/rematch-banner";
+import { SessionReward } from "@/components/game/session-reward";
 import { AssessmentSubmitted } from "@/components/org/assessment-submitted";
 import { ResultView } from "@/components/session/result-view";
 import { PdfButton } from "@/components/share/pdf-button";
@@ -14,8 +15,11 @@ import { Measure, shell } from "@/components/ui/page";
 import { DataLabel } from "@/components/ui/prose";
 import { cn } from "@/lib/utils";
 import { getAccessibleSession } from "@/server/dal/interview";
+import { DIFFICULTY_MULTIPLIER } from "@/server/dal/leaderboard";
+import { getProgression, type Progression } from "@/server/dal/learning";
 import { getAssessmentGate } from "@/server/dal/org";
 import { getViewer } from "@/server/dal/session";
+import { levelForXp, sessionXp } from "@/server/learning/levels";
 import { ShareButton } from "./share-button";
 
 export const metadata: Metadata = {
@@ -61,6 +65,35 @@ export default async function ResultPage(props: {
     }
   }
 
+  // The reward strip. Only for a signed-in viewer on their own non-screening
+  // run: an anonymous session has nowhere to bank points, and an ASSESSMENT is
+  // excluded from XP everywhere else too.
+  let reward: {
+    xpEarned: number;
+    progression: Progression;
+    leveledUp: boolean;
+  } | null = null;
+
+  if (
+    session.owned &&
+    session.mode !== "ASSESSMENT" &&
+    session.score !== null
+  ) {
+    const progression = await getProgression(viewer);
+    const xpEarned = sessionXp(
+      session.score,
+      DIFFICULTY_MULTIPLIER[session.difficulty],
+      session.questionCount,
+    );
+    reward = {
+      xpEarned,
+      progression,
+      // Exact: the level of (total − this run) is the level they walked in on.
+      leveledUp:
+        levelForXp(progression.level.xp - xpEarned) < progression.level.level,
+    };
+  }
+
   return (
     <>
       <SiteHeader>
@@ -91,6 +124,14 @@ export default async function ResultPage(props: {
           </div>
 
           <ResultView session={session} />
+
+          {reward ? (
+            <SessionReward
+              xpEarned={reward.xpEarned}
+              progression={reward.progression}
+              leveledUp={reward.leveledUp}
+            />
+          ) : null}
         </Measure>
       </main>
     </>

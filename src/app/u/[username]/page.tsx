@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { ActivityHeatmap } from "@/components/analytics/activity-heatmap";
 import { formatScore } from "@/components/analytics/format";
 import { StatRow, StatTile } from "@/components/analytics/stat-tile";
+import { LevelBar } from "@/components/game/level-bar";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";
@@ -153,9 +154,9 @@ function PublicBody({ profile }: { profile: PublicProfile }) {
           note={`Best ${profile.longestStreak}`}
         />
         <StatTile
-          label="XP"
-          value={profile.xp.toLocaleString()}
-          note={`${profile.gradedCount} graded`}
+          label="Level"
+          value={profile.level.level}
+          note={`${profile.level.title} · ${profile.xp.toLocaleString()} XP`}
         />
         <StatTile
           label="Average"
@@ -167,6 +168,8 @@ function PublicBody({ profile }: { profile: PublicProfile }) {
           note="Across graded interviews"
         />
       </StatRow>
+
+      <LevelBar level={profile.level} />
 
       <section className="space-y-5">
         <div className="flex items-baseline justify-between gap-4">

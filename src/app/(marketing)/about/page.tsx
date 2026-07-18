@@ -1,6 +1,7 @@
 import { ArrowRightIcon } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Faq } from "@/components/marketing/faq";
 import { Button } from "@/components/ui/button";
 import { Measure } from "@/components/ui/page";
 import { DataLabel, Prose } from "@/components/ui/prose";
@@ -22,7 +23,7 @@ const NOT = [
   },
   {
     title: "Not a job board",
-    body: "No resume review, no job matching, no application tracking. Your own practice is between you and the page. Teams can assessment candidates through organizations, but that's a separate surface — it never touches your personal history.",
+    body: "No resume review, no job matching, no application tracking. Your own practice is between you and the page. Teams can screen candidates through organizations, but that's a separate surface — it never touches your personal history.",
   },
   {
     title: "Not a product with a pricing page",
@@ -150,6 +151,17 @@ export default function AboutPage() {
             </div>
           ))}
         </dl>
+      </section>
+
+      {/* The FAQ used to live on the home page. It is reference material, not
+          a pitch, so it belongs here where someone is already reading. */}
+      <section aria-labelledby="faq" className="mt-12 border-t pt-10">
+        <DataLabel as="h2" id="faq">
+          Questions, answered
+        </DataLabel>
+        <div className="mt-6">
+          <Faq />
+        </div>
       </section>
 
       <section aria-labelledby="cta" className="mt-12 border-t pt-10">

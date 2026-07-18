@@ -5,6 +5,9 @@ import {
 } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { BadgeGrid } from "@/components/game/badge-grid";
+import { DailyGoal } from "@/components/game/daily-goal";
+import { LevelBar } from "@/components/game/level-bar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +19,8 @@ import { DataLabel, Prose } from "@/components/ui/prose";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { evaluateBadges } from "@/server/learning/badges";
+import { levelProgress } from "@/server/learning/levels";
 
 export const metadata: Metadata = { title: "Design system" };
 
@@ -178,6 +183,40 @@ export default function DesignPage() {
           </CardContent>
         </Card>
       </section>
+
+      <Separator className="my-12" />
+
+      {/* The game surfaces, on sample data. These only ever render behind a
+          session otherwise, so this is the one place they can be eyeballed in
+          both themes without taking an interview first. */}
+      <section className="space-y-10">
+        <DataLabel>Progression</DataLabel>
+
+        <DailyGoal met={false} currentStreak={0} longestStreak={4} />
+        <DailyGoal met currentStreak={5} longestStreak={12} />
+
+        <div className="grid gap-10 lg:grid-cols-2">
+          <LevelBar level={levelProgress(136)} />
+          <LevelBar level={levelProgress(4_480)} />
+        </div>
+
+        <BadgeGrid badges={SAMPLE_BADGES} />
+      </section>
     </main>
   );
 }
+
+// Mid-progress stats: some earned, some close, some untouched — the grid's
+// three states in one screenshot.
+const SAMPLE_BADGES = evaluateBadges({
+  gradedCount: 12,
+  currentStreak: 5,
+  longestStreak: 8,
+  xp: 1_400,
+  level: 5,
+  perfectCount: 1,
+  topicCount: 4,
+  hardCount: 2,
+  retiredReviews: 3,
+  dailyCount: 6,
+});

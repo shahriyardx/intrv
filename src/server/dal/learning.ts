@@ -7,6 +7,14 @@ import {
   type ActivityCalendar,
   buildActivityCalendar,
 } from "@/server/learning/activity";
+import {
+  BADGE_COUNT,
+  type Badge,
+  type BadgeStats,
+  earnedCount,
+  evaluateBadges,
+} from "@/server/learning/badges";
+import { type LevelProgress, levelProgress } from "@/server/learning/levels";
 import { computeStreaks, utcDayIndex } from "@/server/learning/momentum";
 import { addDays } from "@/server/learning/scheduling";
 
@@ -218,6 +226,133 @@ export async function getActivityCalendar(
 
   return buildActivityCalendar(counts, todayIndex, CALENDAR_WEEKS);
 }
+
+// ---------------------------------------------------------------------------
+// Progression: level + badges
+// ---------------------------------------------------------------------------
+
+export type Progression = {
+  level: LevelProgress;
+  badges: Badge[];
+  earned: number;
+  total: number;
+  /** Whether a graded session landed today (UTC) — the daily goal. */
+  goalMetToday: boolean;
+  currentStreak: number;
+  longestStreak: number;
+};
+
+/**
+ * Level and badges for one viewer.
+ *
+ * Both are **derived**: XP is the leaderboard formula summed over this user's
+ * graded sessions, and every badge is a predicate over counters computed here.
+ * Nothing is stored, so a rule change applies retroactively and needs no
+ * migration — see badges.ts for what that costs (no "earned at" timestamp).
+ *
+ * One user's history, so the pull is bounded; ASSESSMENT is excluded here for
+ * the same reason it is everywhere else.
+ */
+export async function getProgression(viewer: Viewer): Promise<Progression> {
+  const owner = ownerWhere(viewer);
+  if (!owner) {
+    const badges = evaluateBadges(EMPTY_BADGE_STATS);
+    return {
+      level: levelProgress(0),
+      badges,
+      earned: 0,
+      total: BADGE_COUNT,
+      goalMetToday: false,
+      currentStreak: 0,
+      longestStreak: 0,
+    };
+  }
+
+  const [sessions, retiredReviews] = await Promise.all([
+    prisma.interviewSession.findMany({
+      where: {
+        userId: owner.userId,
+        status: "GRADED",
+        score: { not: null },
+        gradedAt: { not: null },
+        mode: { not: "ASSESSMENT" },
+      },
+      select: {
+        gradedAt: true,
+        score: true,
+        difficulty: true,
+        questionCount: true,
+        topic: true,
+        mode: true,
+      },
+    }),
+    prisma.reviewItem.count({
+      where: { userId: owner.userId, retired: true },
+    }),
+  ]);
+
+  const todayIndex = utcDayIndex(new Date());
+  const topics = new Set<string>();
+  const dayIndices: number[] = [];
+  let xp = 0;
+  let perfectCount = 0;
+  let hardCount = 0;
+  let dailyCount = 0;
+  let goalMetToday = false;
+
+  for (const s of sessions) {
+    const score = Number(s.score);
+    xp += score * DIFFICULTY_MULTIPLIER[s.difficulty] * (s.questionCount / 10);
+    if (score >= 100) perfectCount++;
+    if (s.difficulty === "HARD" || s.difficulty === "EXPERT") hardCount++;
+    if (s.mode === "DAILY") dailyCount++;
+    topics.add(s.topic);
+    if (s.gradedAt) {
+      const day = utcDayIndex(s.gradedAt);
+      dayIndices.push(day);
+      if (day === todayIndex) goalMetToday = true;
+    }
+  }
+
+  const { current, longest } = computeStreaks(dayIndices, todayIndex);
+  const level = levelProgress(Math.round(xp));
+
+  const badges = evaluateBadges({
+    gradedCount: sessions.length,
+    currentStreak: current,
+    longestStreak: longest,
+    xp: level.xp,
+    level: level.level,
+    perfectCount,
+    topicCount: topics.size,
+    hardCount,
+    retiredReviews,
+    dailyCount,
+  });
+
+  return {
+    level,
+    badges,
+    earned: earnedCount(badges),
+    total: BADGE_COUNT,
+    goalMetToday,
+    currentStreak: current,
+    longestStreak: longest,
+  };
+}
+
+const EMPTY_BADGE_STATS: BadgeStats = {
+  gradedCount: 0,
+  currentStreak: 0,
+  longestStreak: 0,
+  xp: 0,
+  level: 1,
+  perfectCount: 0,
+  topicCount: 0,
+  hardCount: 0,
+  retiredReviews: 0,
+  dailyCount: 0,
+};
 
 // ---------------------------------------------------------------------------
 // Mastery map

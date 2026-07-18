@@ -16,6 +16,9 @@ import {
 } from "@/components/analytics/session-status";
 import { StatTile } from "@/components/analytics/stat-tile";
 import { WeakConcepts } from "@/components/analytics/weak-concepts";
+import { BadgeGrid } from "@/components/game/badge-grid";
+import { DailyGoal } from "@/components/game/daily-goal";
+import { LevelBar } from "@/components/game/level-bar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { DataLabel, Prose } from "@/components/ui/prose";
@@ -25,6 +28,7 @@ import {
   getActivityCalendar,
   getDueReviewCount,
   getMomentum,
+  getProgression,
 } from "@/server/dal/learning";
 import { getViewer } from "@/server/dal/session";
 
@@ -33,15 +37,23 @@ export const metadata: Metadata = { title: "Overview" };
 export default async function DashboardPage() {
   const viewer = await getViewer();
 
-  const [stats, weakConcepts, recent, momentum, dueReviews, calendar] =
-    await Promise.all([
-      getOverviewStats(viewer),
-      getWeakConcepts(viewer, { limit: 5 }),
-      listSessions(viewer, { limit: 5 }),
-      getMomentum(viewer),
-      getDueReviewCount(viewer),
-      getActivityCalendar(viewer),
-    ]);
+  const [
+    stats,
+    weakConcepts,
+    recent,
+    momentum,
+    dueReviews,
+    calendar,
+    progression,
+  ] = await Promise.all([
+    getOverviewStats(viewer),
+    getWeakConcepts(viewer, { limit: 5 }),
+    listSessions(viewer, { limit: 5 }),
+    getMomentum(viewer),
+    getDueReviewCount(viewer),
+    getActivityCalendar(viewer),
+    getProgression(viewer),
+  ]);
 
   if (stats.totalSessions === 0) {
     return (
@@ -62,6 +74,33 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-14">
+      <DailyGoal
+        met={progression.goalMetToday}
+        currentStreak={progression.currentStreak}
+        longestStreak={progression.longestStreak}
+      />
+
+      <section className="grid gap-x-8 gap-y-6 border-t pt-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <div className="space-y-3">
+          <DataLabel as="h2">Level</DataLabel>
+          <LevelBar level={progression.level} />
+        </div>
+        <div className="space-y-3">
+          <div className="flex items-baseline justify-between gap-4">
+            <DataLabel as="h2">Badges</DataLabel>
+            <span className="font-mono text-muted-foreground text-xs tabular">
+              {progression.earned} / {progression.total}
+            </span>
+          </div>
+          {/* Six is the closest useful cut: earned first, then whatever is
+              nearest. Two columns, because this sits in the narrow half. */}
+          <BadgeGrid
+            badges={progression.badges.slice(0, 6)}
+            className="lg:grid-cols-2"
+          />
+        </div>
+      </section>
+
       <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatTile
           label="Interviews taken"

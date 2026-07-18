@@ -323,6 +323,9 @@ export async function getCandidateDetail(
   const score = session.score === null ? null : Number(session.score);
 
   const detail: SessionDetail = {
+    // A recruiter reading a candidate's attempt is never its owner, and an
+    // ASSESSMENT earns no XP anyway.
+    owned: false,
     id: session.id,
     topic: session.topic,
     difficulty: session.difficulty,

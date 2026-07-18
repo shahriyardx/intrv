@@ -6,6 +6,7 @@ import {
   type ActivityCalendar,
   buildActivityCalendar,
 } from "@/server/learning/activity";
+import { type LevelProgress, levelProgress } from "@/server/learning/levels";
 import { computeStreaks, utcDayIndex } from "@/server/learning/momentum";
 
 /**
@@ -53,6 +54,8 @@ export type PublicProfile = {
   currentStreak: number;
   longestStreak: number;
   xp: number;
+  /** Derived from xp by the same curve the dashboard uses. */
+  level: LevelProgress;
   /** Global all-time leaderboard rank, or null below the ranking threshold. */
   rank: number | null;
   gradedCount: number;
@@ -196,6 +199,7 @@ export async function getPublicProfile(
     currentStreak: current,
     longestStreak: longest,
     xp: Math.round(xp),
+    level: levelProgress(Math.round(xp)),
     rank,
     gradedCount: sessions.length,
     averageScore:

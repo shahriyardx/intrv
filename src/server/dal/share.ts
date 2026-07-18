@@ -60,6 +60,8 @@ export async function getSharedSession(
 
   return {
     takerName,
+    // A share page is read by strangers by definition.
+    owned: false,
     id: session.id,
     topic: session.topic,
     difficulty: session.difficulty,

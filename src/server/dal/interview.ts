@@ -40,6 +40,15 @@ export type SessionSummary = {
 
 export type SessionDetail = SessionSummary & {
   questions: ClientQuestion[];
+  /**
+   * True only when a signed-in viewer is this session's owner.
+   *
+   * An unowned session is readable by anyone holding the id, so "I can see this
+   * page" is not "I took this interview" — the reward strip needs the second
+   * claim, and a boolean says it without putting a user id in a payload that
+   * reaches client components.
+   */
+  owned: boolean;
 };
 
 const sessionSelect = {
@@ -103,6 +112,10 @@ export async function getAccessibleSession(
     adaptive: session.adaptive,
     rematchOfId: session.rematchOfId,
     questions: session.questions.map((q) => toClientQuestion(q, revealAnswers)),
+    owned:
+      session.userId !== null &&
+      viewer.kind === "user" &&
+      viewer.userId === session.userId,
   };
 }
 
