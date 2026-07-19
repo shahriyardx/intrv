@@ -89,11 +89,12 @@ export default function Home() {
       </SiteHeader>
 
       <main className="flex-1">
-        {/* 1 — Hero. The claim and the buttons; a single column, no props. */}
-        <section className="mx-auto max-w-3xl px-6 pt-24 pb-24 sm:pt-32">
+        {/* 1 — Hero. The claim and the buttons; one column at the shell width,
+            left edge aligned with every section below it. */}
+        <section className="mx-auto max-w-6xl px-6 pt-20 pb-24 sm:pt-28">
           <DataLabel>AI interview practice</DataLabel>
 
-          <h1 className="mt-5 font-display text-display-xl sm:text-display-2xl">
+          <h1 className="mt-5 max-w-4xl font-display text-display-xl sm:text-display-2xl">
             Practice interviews that tell you{" "}
             <span className="relative inline-block">
               <span className="relative z-10 italic">what to fix</span>
