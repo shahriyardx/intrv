@@ -2,218 +2,51 @@ import { cn } from "@/lib/utils";
 import type { BadgeTier } from "@/server/learning/badges";
 
 /**
- * Badge artwork: a struck medallion per badge.
+ * Badge artwork: two panes of coloured glass per badge.
  *
- * Three layers, and each carries one fact so nothing is decoration:
+ * Each mark is built from exactly two translucent shapes — a soft back pane and
+ * a sharper front one — in two hues that belong together. Where they overlap,
+ * the blend makes a third tone the code never names. That is the whole visual
+ * idea, and it is why nothing here has an outline or a container: the shape of
+ * the object *is* the badge, so a rocket reads as a rocket rather than as a
+ * rocket parked inside a coin.
  *
- * - **Hue = family.** Five hues over twelve badges, not twelve. The colour tells
- *   you what is being measured (volume, habit, precision, breadth, retention),
- *   so the wall reads as groups rather than confetti. Pulled from the validated
- *   `--chart-*` ramp, which is already checked in both themes.
- * - **Ring = tier.** Bronze is a bare ring, silver adds eight ticks, gold a
- *   double ring with twelve. Tier is legible from the frame alone — it never
- *   depends on telling one metal colour from another, which is exactly the
- *   distinction a colour-blind reader loses.
- * - **Glyph = identity.** A geometric engraving on a 32-unit grid, 1.5 stroke,
- *   round caps. Drawn, not iconographic: this is a technical product, so the
- *   marks are compass points and bar stacks, not trophies and ribbons.
+ * Colour still carries meaning rather than decoration. Five hue pairs cover
+ * twelve badges, one per family — volume, habit, precision, breadth,
+ * retention — so the grid reads as groups instead of confetti. Every hue comes
+ * from the validated `--chart-*` ramp, which is already checked in both themes.
  *
- * Locked badges drop the hue entirely and render in muted ink. Desaturating a
- * colour would still read as "a colour"; removing it reads as "not yet", and
- * the silhouette still identifies which badge it is.
+ * **Tier is not drawn.** An earlier version spent a ring on it, which forced
+ * every badge into a circle and made twelve different objects look like twelve
+ * coins. Bronze/silver/gold is already spelled out in text beside each badge,
+ * which is both clearer and readable to someone who cannot see the artwork at
+ * all.
  *
- * Everything is `currentColor`-free and token-driven so light and dark both
- * work without a second asset.
+ * Locked badges collapse to one neutral ink at low opacity. Desaturating a
+ * colour still reads as a colour; removing it reads as "not yet", and the
+ * silhouette still says which badge it is.
  */
 
 type Family = "volume" | "habit" | "precision" | "breadth" | "retention";
 
-/** One hue per family, from the validated dataviz ramp. */
-const FAMILY_HUE: Record<Family, string> = {
-  volume: "var(--chart-1)", // blue — how much you've done
-  habit: "var(--chart-6)", // orange — showing up
-  precision: "var(--chart-5)", // green — getting it exactly right
-  breadth: "var(--chart-7)", // violet — range
-  retention: "var(--chart-4)", // amber — what stuck
-};
-
-/** Ticks around the ring, evenly spaced. Silver gets 8, gold 12. */
-function ticks(count: number, inner: number, outer: number) {
-  return Array.from({ length: count }, (_, i) => {
-    const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-    return {
-      // Keyed by the angle it sits at: fixed geometry, so this is a real
-      // identity rather than a position that could shift under it.
-      id: `t${angle.toFixed(4)}`,
-      x1: 16 + cos * inner,
-      y1: 16 + sin * inner,
-      x2: 16 + cos * outer,
-      y2: 16 + sin * outer,
-    };
-  }).map(({ id, ...line }) => <line key={id} {...line} />);
-}
-
-function Frame({ tier }: { tier: BadgeTier }) {
-  return (
-    <g>
-      <circle cx="16" cy="16" r="15" fill="none" strokeWidth="1" />
-      {tier === "gold" ? (
-        <circle cx="16" cy="16" r="12.6" fill="none" strokeWidth="0.75" />
-      ) : null}
-      {tier === "silver" ? (
-        <g strokeWidth="1" strokeLinecap="round">
-          {ticks(8, 12.4, 14.1)}
-        </g>
-      ) : null}
-      {tier === "gold" ? (
-        <g strokeWidth="1" strokeLinecap="round">
-          {ticks(12, 13.4, 14.4)}
-        </g>
-      ) : null}
-    </g>
-  );
-}
-
 /**
- * The engravings. Each is a bare fragment drawn inside the medallion, centred
- * on (16,16) and staying within about a 16-unit square so the ring never
- * crowds it.
+ * A hue pair per family: the back pane and the front one. Neighbours on the
+ * ramp rather than opposites — two hues that argue produce mud where they
+ * overlap, which is exactly the area meant to look like glass.
  */
-const GLYPHS: Record<string, React.ReactNode> = {
-  // One run: a single struck dot, ringed. The whole point is that it is one.
-  "first-run": (
-    <>
-      <circle cx="16" cy="16" r="6" fill="none" />
-      <circle cx="16" cy="16" r="2.2" strokeWidth="0" fill="currentColor" />
-    </>
-  ),
-
-  // Ten: a short stack of bars, growing.
-  "ten-runs": (
-    <>
-      <line x1="10" y1="20.5" x2="22" y2="20.5" />
-      <line x1="10" y1="16" x2="19" y2="16" />
-      <line x1="10" y1="11.5" x2="15.5" y2="11.5" />
-    </>
-  ),
-
-  // Fifty: the same stack filled out into a block — volume, not a milestone.
-  "fifty-runs": (
-    <>
-      <rect x="9.5" y="9.5" width="5" height="5" rx="0.6" />
-      <rect x="17.5" y="9.5" width="5" height="5" rx="0.6" />
-      <rect x="9.5" y="17.5" width="5" height="5" rx="0.6" />
-      <rect
-        x="17.5"
-        y="17.5"
-        width="5"
-        height="5"
-        rx="0.6"
-        strokeWidth="0"
-        fill="currentColor"
-      />
-    </>
-  ),
-
-  // Three days: a small flame.
-  "streak-3": (
-    <path d="M16 9.5c2.6 2.4 4.4 4.6 4.4 7.1a4.4 4.4 0 1 1-8.8 0c0-1.4.6-2.6 1.7-3.9.5 1 1 1.5 1.7 1.8-.2-1.9.2-3.4 1-5Z" />
-  ),
-
-  // A week: seven marks, unbroken. Counted rather than drawn as a calendar —
-  // at 36px a seven-cell grid collapses into a smudge, seven dots do not.
-  "streak-7": (
-    <>
-      {[10, 12, 14, 16, 18, 20, 22].map((x) => (
-        <circle
-          key={x}
-          cx={x}
-          cy="16"
-          r="1.15"
-          strokeWidth="0"
-          fill="currentColor"
-        />
-      ))}
-      <line x1="10" y1="20.6" x2="22" y2="20.6" strokeWidth="1.2" />
-    </>
-  ),
-
-  // Thirty: a filled month block.
-  "streak-30": (
-    <>
-      <rect x="8.5" y="9.5" width="15" height="13" rx="1.2" />
-      <line x1="8.5" y1="13.5" x2="23.5" y2="13.5" />
-      <line x1="12.5" y1="9.5" x2="12.5" y2="7.8" />
-      <line x1="19.5" y1="9.5" x2="19.5" y2="7.8" />
-      <path d="m12.5 18 2.4 2.4 4.6-4.6" strokeWidth="1.8" />
-    </>
-  ),
-
-  // Perfect: dead centre. The crosshair is what separates it from first-run —
-  // two sets of concentric rings are the same mark at this size.
-  perfect: (
-    <>
-      <circle cx="16" cy="16" r="6.4" fill="none" />
-      <circle cx="16" cy="16" r="2.6" fill="none" />
-      <line x1="16" y1="7.4" x2="16" y2="10.4" strokeLinecap="round" />
-      <line x1="16" y1="21.6" x2="16" y2="24.6" strokeLinecap="round" />
-      <line x1="7.4" y1="16" x2="10.4" y2="16" strokeLinecap="round" />
-      <line x1="21.6" y1="16" x2="24.6" y2="16" strokeLinecap="round" />
-    </>
-  ),
-
-  // Five perfect: a five-pointed mark, struck solid.
-  "perfect-5": (
-    <path
-      d="m16 8.6 2.3 4.9 5.2.7-3.8 3.7 1 5.3-4.7-2.6-4.7 2.6 1-5.3-3.8-3.7 5.2-.7Z"
-      strokeWidth="0"
-      fill="currentColor"
-    />
-  ),
-
-  // Breadth: a compass rose — going out in several directions.
-  explorer: (
-    <>
-      <circle cx="16" cy="16" r="6.8" fill="none" />
-      <path
-        d="M16 9.6 17.6 15 23 16.4 17.6 17.8 16 23.2 14.4 17.8 9 16.4 14.4 15Z"
-        strokeWidth="0"
-        fill="currentColor"
-      />
-    </>
-  ),
-
-  // Deep end: descending, into the harder water.
-  "deep-end": (
-    <>
-      <path d="m10 11.5 6 4 6-4" />
-      <path d="m10 16.5 6 4 6-4" />
-      <line x1="16" y1="20.5" x2="16" y2="23" />
-    </>
-  ),
-
-  // It stuck: an anchor — the thing that holds.
-  retained: (
-    <>
-      <circle cx="16" cy="10.8" r="2" fill="none" />
-      <line x1="16" y1="12.8" x2="16" y2="22.5" />
-      <line x1="12" y1="15.2" x2="20" y2="15.2" />
-      <path d="M10.5 18.4c0 3 2.5 4.6 5.5 4.6s5.5-1.6 5.5-4.6" />
-    </>
-  ),
-
-  // Daily habit: a day mark, rayed.
-  "daily-10": (
-    <>
-      <circle cx="16" cy="16" r="4.2" fill="none" />
-      <g strokeLinecap="round">{ticks(8, 6.6, 8.8)}</g>
-    </>
-  ),
+const FAMILY_HUES: Record<Family, { back: string; front: string }> = {
+  // blue → violet: how much you've done
+  volume: { back: "var(--chart-1)", front: "var(--chart-7)" },
+  // orange → red: showing up, day after day
+  habit: { back: "var(--chart-4)", front: "var(--chart-6)" },
+  // teal → green: getting it exactly right
+  precision: { back: "var(--chart-5)", front: "var(--chart-2)" },
+  // violet → pink: range
+  breadth: { back: "var(--chart-7)", front: "var(--chart-3)" },
+  // amber → orange: what stuck
+  retention: { back: "var(--chart-4)", front: "var(--chart-6)" },
 };
 
-/** Which family each badge belongs to — drives the hue, nothing else. */
 const BADGE_FAMILY: Record<string, Family> = {
   "first-run": "volume",
   "ten-runs": "volume",
@@ -229,53 +62,146 @@ const BADGE_FAMILY: Record<string, Family> = {
   retained: "retention",
 };
 
-/** A ringed dot, for a badge id that has no engraving yet. */
-const FALLBACK = <circle cx="16" cy="16" r="5.5" fill="none" />;
+/** Opacity of each pane. Low enough that the overlap is visibly a third tone. */
+const BACK_ALPHA = 0.38;
+const FRONT_ALPHA = 0.72;
+
+/**
+ * The marks. Each is `(back, front)` — two shapes, drawn on a 32-unit grid,
+ * filling it edge to edge because there is no frame to sit inside.
+ *
+ * They are objects, not diagrams: a rocket for a first launch, a sprout for
+ * something that took root, a paper plane for going further out. Playful is the
+ * point — this is the half of the product that is a game.
+ */
+const MARKS: Record<string, { back: string; front: string }> = {
+  // First run — a rocket leaving the pad.
+  "first-run": {
+    back: "M16 2c4.4 3.7 6.8 8.7 6.8 14.4 0 3.4-.9 6.4-2.4 9H11.6c-1.5-2.6-2.4-5.6-2.4-9C9.2 10.7 11.6 5.7 16 2Z",
+    front:
+      "M11.6 25.4h8.8l-1 2.6a1 1 0 0 1-.9.6h-5a1 1 0 0 1-.9-.6l-1-2.6ZM9.2 16.6 4.6 21a1 1 0 0 0-.3.7v3.5l4.9-3.4v-5.2Zm13.6 0 4.6 4.4a1 1 0 0 1 .3.7v3.5l-4.9-3.4v-5.2Z",
+  },
+
+  // Ten runs — a stack that has started to build.
+  "ten-runs": {
+    back: "M4 21a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v7H6a2 2 0 0 1-2-2v-5Z",
+    front:
+      "M13 13a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v15h-8a2 2 0 0 1-2-2V13Zm9-9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v24h-6V4Z",
+  },
+
+  // Fifty runs — a summit, with the climb behind it.
+  "fifty-runs": {
+    back: "M2 27 11 12l6 10-3.5 5H2Z",
+    front: "M12 27 21 9l9 18H12Zm9-13.5 2.6 5.2h-5.2L21 13.5Z",
+  },
+
+  // Three days — a small flame, just caught.
+  "streak-3": {
+    back: "M16 3c5 4.4 8 8.6 8 13.2a8 8 0 0 1-16 0C8 12.9 9.4 10.4 12 8c.7 2 1.6 3.2 3 3.9-.5-3.6.1-6.3 1-8.9Z",
+    front:
+      "M16 30a5 5 0 0 1-5-5c0-2.3 1.6-4.2 3.2-6.4.5 1.3 1.1 2 2 2.5-.3-2.3.4-4 1.4-5.6 2.4 2.6 3.4 5.2 3.4 7.5a5 5 0 0 1-5 5Z",
+  },
+
+  // A week — a campfire. Three days is a flame you are still shielding; seven
+  // is a fire someone built, with logs under it. Same family, different object,
+  // so the two do not read as the same badge twice.
+  "streak-7": {
+    back: "M16 1c5.2 4.4 8.4 8.8 8.4 13.6 0 4.2-2.6 7.4-6.2 8.6H13.8c-3.6-1.2-6.2-4.4-6.2-8.6C7.6 11 9.2 8.2 12 5.6c.8 2.2 1.7 3.4 3.1 4.2C14.4 6 15 3.5 16 1Z",
+    front:
+      "M4.8 24.4a1.6 1.6 0 0 1 2.2-.6l18 9.4-1.5 2.8-18-9.4a1.6 1.6 0 0 1-.7-2.2Zm22.4 0a1.6 1.6 0 0 1-.7 2.2l-18 9.4-1.5-2.8 18-9.4a1.6 1.6 0 0 1 2.2.6Z",
+  },
+
+  // Thirty days — a month, marked off.
+  "streak-30": {
+    back: "M3 8a3 3 0 0 1 3-3h20a3 3 0 0 1 3 3v18a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V8Z",
+    front:
+      "M3 13h26v3H3v-3Zm6-11a1.5 1.5 0 0 1 1.5 1.5V7a1.5 1.5 0 0 1-3 0V3.5A1.5 1.5 0 0 1 9 2Zm14 0a1.5 1.5 0 0 1 1.5 1.5V7a1.5 1.5 0 0 1-3 0V3.5A1.5 1.5 0 0 1 23 2ZM10.6 21.4l3.2 3.2 7.4-7.4 2.1 2.1-9.5 9.5-5.3-5.3 2.1-2.1Z",
+  },
+
+  // Clean sheet — a dart in the middle of the board.
+  perfect: {
+    back: "M16 3a13 13 0 1 1 0 26 13 13 0 0 1 0-26Zm0 6a7 7 0 1 0 0 14 7 7 0 0 0 0-14Z",
+    front:
+      "M16 12.5a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7Zm4.6-1.1 6.6-6.6-.5 4.3 4.3-.5-6.6 6.6-3.8-3.8Z",
+  },
+
+  // Five perfect — a crown, because five in a row is a flourish.
+  "perfect-5": {
+    back: "M4 24h24a2 2 0 0 1 0 4H4a2 2 0 0 1 0-4Z",
+    front:
+      "M2 8.5 9.5 15 16 4l6.5 11L30 8.5 27 22H5L2 8.5Zm14-1.2 4.4 7.4h-8.8L16 7.3Z",
+  },
+
+  // Explorer — a paper plane, going somewhere new.
+  explorer: {
+    back: "M30 3 2 14.5l10 3.8L30 3Z",
+    front: "M30 3 12 18.3l1.2 10.4 4.6-6.2 7.4 3.3L30 3Z",
+  },
+
+  // Deep end — a loaded bar. Hard and expert are the heavy plates, and a
+  // dumbbell says "this was the difficult one" without another arrow or
+  // chevron, which every other progress mark in the app already uses.
+  "deep-end": {
+    back: "M2 12.5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 7 12.5v7A1.5 1.5 0 0 1 5.5 21h-2A1.5 1.5 0 0 1 2 19.5v-7Zm23 0a1.5 1.5 0 0 1 1.5-1.5h2a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5h-2a1.5 1.5 0 0 1-1.5-1.5v-7Z",
+    front:
+      "M7 9a2 2 0 0 1 2-2h1.5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9Zm12.5 0a2 2 0 0 1 2-2H23a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-1.5a2 2 0 0 1-2-2V9ZM12 14.5h8v3h-8v-3Z",
+  },
+
+  // It stuck — a sprout that took root.
+  retained: {
+    back: "M6 22h20l-1.6 7.2a1 1 0 0 1-1 .8H8.6a1 1 0 0 1-1-.8L6 22Z",
+    front:
+      "M15 22V13.5c-4.4 0-8-3.4-8-7.6 4.4 0 8 3.4 8 7.6V13c0-4 3.2-7.3 7.2-7.3.7 0 1.4.1 2 .3-.5 4.4-4.3 7.8-8.9 7.8h-.3V22h-3Z",
+  },
+
+  // Daily habit — the sun coming up again.
+  "daily-10": {
+    back: "M16 6a10 10 0 0 1 10 10H6A10 10 0 0 1 16 6Z",
+    front:
+      "M2 19h28a1.5 1.5 0 0 1 0 3H2a1.5 1.5 0 0 1 0-3Zm4 6h20a1.5 1.5 0 0 1 0 3H6a1.5 1.5 0 0 1 0-3ZM16 1a1.3 1.3 0 0 1 1.3 1.3v2.4a1.3 1.3 0 0 1-2.6 0V2.3A1.3 1.3 0 0 1 16 1ZM4.6 5.6l1.9 1.9a1.3 1.3 0 0 1-1.8 1.8L2.8 7.4a1.3 1.3 0 0 1 1.8-1.8Zm22.8 0a1.3 1.3 0 0 1 0 1.8l-1.9 1.9a1.3 1.3 0 0 1-1.8-1.8l1.9-1.9a1.3 1.3 0 0 1 1.8 0Z",
+  },
+};
+
+/** A soft lozenge, for a badge id that has no mark yet. */
+const FALLBACK = {
+  back: "M6 8a4 4 0 0 1 4-4h12a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4V8Z",
+  front: "M11 14h10v4H11v-4Z",
+};
 
 export function BadgeArt({
   id,
-  tier,
   earned,
   className,
 }: {
   id: string;
-  tier: BadgeTier;
+  /** Accepted so callers need not know tier is undrawn; see the note above. */
+  tier?: BadgeTier;
   earned: boolean;
   className?: string;
 }) {
-  const hue = FAMILY_HUE[BADGE_FAMILY[id] ?? "volume"];
-  const glyph = GLYPHS[id] ?? FALLBACK;
+  const hues = FAMILY_HUES[BADGE_FAMILY[id] ?? "volume"];
+  const mark = MARKS[id] ?? FALLBACK;
 
-  // Locked: no hue at all. A greyed-out colour still reads as a colour; ink
-  // reads as "not yet", and the silhouette still says which badge it is.
-  const color = earned ? hue : "var(--muted-foreground)";
+  // Locked: one neutral ink, both panes. A greyed colour still reads as a
+  // colour; ink reads as "not yet".
+  const back = earned ? hues.back : "var(--muted-foreground)";
+  const front = earned ? hues.front : "var(--muted-foreground)";
 
   return (
     // biome-ignore lint/a11y/noSvgWithoutTitle: aria-hidden; the badge name sits beside it in text
     <svg
       viewBox="0 0 32 32"
-      className={cn("size-9 shrink-0", !earned && "opacity-55", className)}
+      className={cn("size-9 shrink-0", !earned && "opacity-45", className)}
       aria-hidden
       focusable="false"
-      style={{ color }}
     >
-      {/* The tinted disc. Kept low so twelve of these together stay quiet. */}
-      <circle
-        cx="16"
-        cy="16"
-        r="15.5"
-        fill={
-          earned
-            ? `color-mix(in oklab, ${hue} 13%, transparent)`
-            : "color-mix(in oklab, var(--muted-foreground) 7%, transparent)"
-        }
+      <path d={mark.back} fill={back} fillOpacity={BACK_ALPHA} />
+      <path
+        d={mark.front}
+        fill={front}
+        fillOpacity={earned ? FRONT_ALPHA : BACK_ALPHA + 0.15}
+        fillRule="evenodd"
       />
-      <g stroke="currentColor" fill="none">
-        <Frame tier={tier} />
-        <g strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          {glyph}
-        </g>
-      </g>
     </svg>
   );
 }
