@@ -25,8 +25,25 @@ import { ownerWhere, type Viewer } from "@/server/dal/owner";
 /** A score at or above this is "right". Matches the result page's verdict. */
 const CORRECT_AT = 80;
 
-/** Only GRADED sessions carry a trustworthy score. */
-const gradedSession = { status: "GRADED" as const, score: { not: null } };
+/**
+ * Only GRADED sessions carry a trustworthy score, and never a screening.
+ *
+ * ASSESSMENT is excluded from every read in this file for the same reason it is
+ * excluded from the leaderboard, XP and the learning loop: a screening attempt
+ * is a recruiter's private process, not the candidate's own practice. Leaving it
+ * in meant a candidate's personal average, weak concepts and mistakes were all
+ * polluted by an interview someone else set them — and, worse, those mistakes
+ * could never be dismissed, because scheduleReviews skips ASSESSMENT and so no
+ * ReviewItem ever existed to retire.
+ */
+const gradedSession = {
+  status: "GRADED" as const,
+  score: { not: null },
+  mode: { not: "ASSESSMENT" as const },
+};
+
+/** The same exclusion for queries that don't need a score to be present. */
+const ownPractice = { mode: { not: "ASSESSMENT" as const } };
 
 export type ConceptAccuracy = {
   concept: string;
@@ -116,6 +133,7 @@ export async function getConceptAccuracy(
     CROSS JOIN LATERAL unnest(q.concepts) AS c(concept)
     WHERE s."userId" = ${owner.userId}
       AND s.status = 'GRADED'
+      AND s.mode <> 'ASSESSMENT'
       AND a.score IS NOT NULL
     GROUP BY c.concept
     HAVING COUNT(*) >= ${minTotal}
@@ -154,6 +172,7 @@ export async function getWeakConcepts(
     CROSS JOIN LATERAL unnest(q.concepts) AS c(concept)
     WHERE s."userId" = ${owner.userId}
       AND s.status = 'GRADED'
+      AND s.mode <> 'ASSESSMENT'
       AND a.score IS NOT NULL
     GROUP BY c.concept
     HAVING COUNT(*) >= ${minTotal}
@@ -201,6 +220,7 @@ export async function getTypeAccuracy(viewer: Viewer): Promise<TypeAccuracy[]> {
     JOIN interview_session s ON s.id = q."sessionId"
     WHERE s."userId" = ${owner.userId}
       AND s.status = 'GRADED'
+      AND s.mode <> 'ASSESSMENT'
       AND a.score IS NOT NULL
     GROUP BY q.type
     ORDER BY total DESC
@@ -292,7 +312,7 @@ export async function getOverviewStats(viewer: Viewer): Promise<OverviewStats> {
     // Failed generations are deleted at the source, but exclude them here too so
     // a legacy or mid-flight FAILED row never inflates "interviews taken".
     prisma.interviewSession.count({
-      where: { ...owner, status: { not: "FAILED" } },
+      where: { ...owner, ...ownPractice, status: { not: "FAILED" } },
     }),
     prisma.interviewSession.aggregate({
       where: { ...owner, ...gradedSession },
@@ -301,7 +321,9 @@ export async function getOverviewStats(viewer: Viewer): Promise<OverviewStats> {
       _count: { _all: true },
     }),
     prisma.answer.count({
-      where: { question: { session: { ...owner, status: "GRADED" } } },
+      where: {
+        question: { session: { ...owner, ...ownPractice, status: "GRADED" } },
+      },
     }),
     // Ranked here rather than in SQL: the list is already capped at 10 topics,
     // and "best" needs a minimum-attempts rule that ORDER BY can't express as
@@ -404,7 +426,7 @@ export async function getMistakes(
 
   const rows = await prisma.question.findMany({
     where: {
-      session: { ...owner, status: "GRADED" },
+      session: { ...owner, ...ownPractice, status: "GRADED" },
       // `lt` on a null score matches nothing, so ungraded answers stay out —
       // an answer we failed to grade is not a mistake we can teach from.
       answer: { score: { lt: CORRECT_AT } },

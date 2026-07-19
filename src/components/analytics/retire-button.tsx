@@ -18,6 +18,8 @@ export function RetireButton({
   itemId,
   concept,
   all,
+  topic,
+  difficulty,
   label,
   confirmLabel,
   size = "sm",
@@ -27,6 +29,9 @@ export function RetireButton({
   itemId?: string;
   concept?: string;
   all?: boolean;
+  /** With `concept`: lets a never-scheduled concept still be dismissed. */
+  topic?: string;
+  difficulty?: string;
   label: string;
   /** When set, the first click asks and the second commits. */
   confirmLabel?: string;
@@ -41,7 +46,13 @@ export function RetireButton({
   const commit = () => {
     setError(null);
     startTransition(async () => {
-      const result = await retireReviewItems({ itemId, concept, all });
+      const result = await retireReviewItems({
+        itemId,
+        concept,
+        all,
+        topic,
+        difficulty,
+      });
       if (!result.ok) setError(result.error);
       setAsking(false);
     });

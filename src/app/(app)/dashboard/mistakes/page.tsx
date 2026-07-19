@@ -42,12 +42,11 @@ export default async function MistakesPage() {
   }
 
   // Retired means the concept was either mastered on the ladder or dismissed
-  // with "I've got this". Those fold to the bottom; everything else — including
-  // concepts that were never scheduled — stays in the main list.
-  const allGroups = groupMistakesByConcept(items);
-  const groups = allGroups.filter((g) => !conceptState.retired.has(g.concept));
-  const clearedGroups = allGroups.filter((g) =>
-    conceptState.retired.has(g.concept),
+  // with "I've got this". Either way it is gone from here — done is done, and a
+  // list of things you have finished with is just more to read. The misses
+  // themselves are untouched in the database; only this view hides them.
+  const groups = groupMistakesByConcept(items).filter(
+    (group) => !conceptState.retired.has(group.concept),
   );
 
   return (
@@ -93,9 +92,18 @@ export default async function MistakesPage() {
                 {group.mistakes.length}{" "}
                 {group.mistakes.length === 1 ? "miss" : "misses"}
               </DataLabel>
-              {conceptState.active.has(group.concept) ? (
-                <RetireButton concept={group.concept} label="I've got this" />
-              ) : null}
+              {/* Shown on every open group, not only the tracked ones: a
+                  concept scored 60–79 never got a ReviewItem, and it would be
+                  the one you most want gone. The action writes a retired stub
+                  in that case. Untagged is not a real concept, so it is out. */}
+              {group.concept === UNTAGGED_CONCEPT ? null : (
+                <RetireButton
+                  concept={group.concept}
+                  topic={group.mistakes[0]?.topic}
+                  difficulty={group.mistakes[0]?.difficulty}
+                  label="I've got this"
+                />
+              )}
             </summary>
 
             <ul className="space-y-4 border-t p-4">
@@ -108,37 +116,6 @@ export default async function MistakesPage() {
           </details>
         ))}
       </div>
-
-      {clearedGroups.length > 0 ? (
-        <section className="space-y-3 border-t pt-6">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <DataLabel as="h2">Done with</DataLabel>
-            <p className="text-muted-foreground text-xs">
-              Mastered on the review ladder, or dismissed. The misses are still
-              here — nothing was deleted.
-            </p>
-          </div>
-          <ul className="divide-y border-t">
-            {clearedGroups.map((group) => (
-              <li
-                key={group.concept}
-                className="flex items-center gap-4 py-2.5 text-muted-foreground text-sm"
-              >
-                <SealCheckIcon className="size-3.5 shrink-0" aria-hidden />
-                <span className="min-w-0 flex-1 truncate">
-                  {group.concept === UNTAGGED_CONCEPT
-                    ? "Untagged"
-                    : group.concept}
-                </span>
-                <span className="shrink-0 font-mono text-[0.625rem] uppercase tracking-[0.12em]">
-                  {group.mistakes.length}{" "}
-                  {group.mistakes.length === 1 ? "miss" : "misses"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
     </div>
   );
 }

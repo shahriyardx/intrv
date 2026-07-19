@@ -168,6 +168,9 @@ export async function retireReviewItems(input: {
   concept?: string;
   /** Retire the viewer's whole active queue. */
   all?: boolean;
+  /** With `concept`: lets a never-scheduled concept still be dismissed. */
+  topic?: string;
+  difficulty?: string;
 }): Promise<{ ok: true; retired: number } | ReviewActionError> {
   const viewer = await getViewer();
   if (viewer.kind !== "user") {
@@ -189,6 +192,43 @@ export async function retireReviewItems(input: {
     where: { ...scope, userId: viewer.userId, retired: false },
     data: { retired: true },
   });
+
+  // Dismissing a concept that was never scheduled.
+  //
+  // Not every mistake has a ReviewItem: the mistakes page lists anything scored
+  // under 80, while scheduleReviews only files a concept under 60, and older
+  // sessions predate the loop entirely. Without this, "I've got this" would be
+  // a no-op on exactly the concepts a user most wants gone. Writing a retired
+  // stub records the dismissal in the one place that already means "done".
+  //
+  // topic/difficulty round-trip through the client, so both are re-validated
+  // here. They only label a row keyed to this user, but an action never trusts
+  // its caller.
+  if (count === 0 && input.concept && input.topic) {
+    const topic = topicSchema.safeParse(input.topic);
+    const difficulty = difficultySchema.safeParse(input.difficulty);
+    if (topic.success && difficulty.success) {
+      await prisma.reviewItem.upsert({
+        where: {
+          userId_topic_concept: {
+            userId: viewer.userId,
+            topic: topic.data,
+            concept: input.concept,
+          },
+        },
+        create: {
+          userId: viewer.userId,
+          topic: topic.data,
+          concept: input.concept,
+          difficulty: difficulty.data,
+          stage: 0,
+          retired: true,
+          dueAt: new Date(),
+        },
+        update: { retired: true },
+      });
+    }
+  }
 
   revalidatePath("/dashboard/review");
   revalidatePath("/dashboard/mistakes");
