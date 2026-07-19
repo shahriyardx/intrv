@@ -6,7 +6,6 @@ import {
   TrophyIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
-import { GradedQuestionMock } from "@/components/marketing/graded-question-mock";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
@@ -90,49 +89,45 @@ export default function Home() {
       </SiteHeader>
 
       <main className="flex-1">
-        {/* 1 — Hero. The claim, the button, and a picture of the payoff. */}
-        <section className="mx-auto grid max-w-6xl gap-12 px-6 pt-20 pb-24 sm:pt-28 lg:grid-cols-[1fr_0.85fr] lg:items-center lg:gap-16">
-          <div>
-            <DataLabel>AI interview practice</DataLabel>
+        {/* 1 — Hero. The claim and the buttons; a single column, no props. */}
+        <section className="mx-auto max-w-3xl px-6 pt-24 pb-24 sm:pt-32">
+          <DataLabel>AI interview practice</DataLabel>
 
-            <h1 className="mt-5 font-display text-display-xl sm:text-display-2xl">
-              Practice interviews that tell you{" "}
-              <span className="relative inline-block">
-                <span className="relative z-10 italic">what to fix</span>
-                <span
-                  aria-hidden
-                  className="absolute inset-x-0 bottom-1 z-0 h-3 bg-accent/70 sm:bottom-2 sm:h-5"
-                />
-              </span>
-            </h1>
+          <h1 className="mt-5 font-display text-display-xl sm:text-display-2xl">
+            Practice interviews that tell you{" "}
+            <span className="relative inline-block">
+              <span className="relative z-10 italic">what to fix</span>
+              <span
+                aria-hidden
+                className="absolute inset-x-0 bottom-1 z-0 h-3 bg-accent/70 sm:bottom-2 sm:h-5"
+              />
+            </span>
+          </h1>
 
-            <Prose className="mt-8 text-lg text-muted-foreground">
-              <p>
-                Pick any topic. We write the questions, you answer them, and you
-                get a graded breakdown of exactly which ideas you haven't got
-                yet — then a streak, XP and a leaderboard to make coming back
-                worth it.
-              </p>
-            </Prose>
-
-            <div className="mt-10 flex flex-wrap items-center gap-4">
-              <Button asChild size="lg" className="min-w-44">
-                <Link href="/start">
-                  Start an interview
-                  <ArrowRightIcon className="size-4" />
-                </Link>
-              </Button>
-              <Button asChild variant="ghost" size="lg">
-                <Link href="/daily">Today's challenge</Link>
-              </Button>
-            </div>
-
-            <p className="mt-5 text-muted-foreground text-sm">
-              Free account. No card. Nothing to install.
+          <Prose className="mt-8 text-lg text-muted-foreground">
+            <p>
+              Pick any topic. We write the questions, you answer them, and you
+              get a graded breakdown of exactly which ideas you haven't got yet
+              — then a streak, XP and a leaderboard to make coming back worth
+              it.
             </p>
+          </Prose>
+
+          <div className="mt-10 flex flex-wrap items-center gap-4">
+            <Button asChild size="lg" className="min-w-44">
+              <Link href="/start">
+                Start an interview
+                <ArrowRightIcon className="size-4" />
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" size="lg">
+              <Link href="/daily">Today's challenge</Link>
+            </Button>
           </div>
 
-          <GradedQuestionMock />
+          <p className="mt-5 text-muted-foreground text-sm">
+            Free account. No card. Nothing to install.
+          </p>
         </section>
 
         {/* 2 — How it works. */}
