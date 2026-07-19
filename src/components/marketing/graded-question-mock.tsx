@@ -45,23 +45,35 @@ export function GradedQuestionMock() {
           </span>
         </header>
 
-        <dl className="space-y-3.5 text-sm">
-          <Row label="Your answer">
-            Promises are faster than timers, so the engine runs them first.
-          </Row>
-          <Row label="Correct answer">
-            Promise callbacks go on the microtask queue, which the event loop
-            drains completely after the current task and before it takes the
-            next timer callback off the macrotask queue. Ordering is queue
-            priority, not speed.
-          </Row>
-          <Row label="Feedback">
+        {/* Two answers side by side, coloured by verdict — the comparison is
+            the point. Mirrors the grid in result-view's ReviewCard; stacking
+            them label-left made the card tall and the colour was the thing that
+            actually carried the meaning. */}
+        <div className="grid gap-4 border-t pt-4 text-sm sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <DataLabel as="dt">Your answer</DataLabel>
+            <p className="text-partial leading-relaxed">
+              Promises are faster than timers, so the engine runs them first.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <DataLabel as="dt">Correct answer</DataLabel>
+            <p className="text-correct leading-relaxed">
+              Promise callbacks go on the microtask queue, which the event loop
+              drains after the current task, before the next timer callback.
+              Ordering is queue priority, not speed.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 border-t pt-4">
+          <DataLabel as="dt">Feedback</DataLabel>
+          <Prose className="mt-1.5 text-sm">
             You've got the observable behaviour right — the promise does run
-            first — but the reason isn't speed. Nothing here is racing. Name the
-            two queues and say when the loop drains each one, and this is a full
-            mark.
-          </Row>
-        </dl>
+            first — but the reason isn't speed. Name the two queues and say when
+            the loop drains each one, and this is a full mark.
+          </Prose>
+        </div>
       </article>
 
       <div className="mt-6 border-t pt-5">
@@ -80,23 +92,6 @@ export function GradedQuestionMock() {
           ))}
         </div>
       </div>
-    </div>
-  );
-}
-
-function Row({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="grid gap-1 sm:grid-cols-[7rem_1fr] sm:gap-4">
-      <dt className="font-mono text-[0.625rem] uppercase tracking-[0.12em] text-muted-foreground">
-        {label}
-      </dt>
-      <dd className="text-pretty leading-relaxed">{children}</dd>
     </div>
   );
 }
