@@ -127,6 +127,8 @@ export function buildGenerateUser(input: {
   count: number;
   brief?: string;
   avoid?: string[];
+  /** One entry per question: the type that slot must be. */
+  plan?: QuestionType[];
 }): string {
   const lines = [
     `Topic: ${input.topic}`,
@@ -146,8 +148,20 @@ export function buildGenerateUser(input: {
     );
   }
 
-  if (input.types.length > 1) {
-    lines.push("Mix the types roughly evenly across the set.");
+  // The exact type of every slot, decided in type-mix.ts. "Mix the types
+  // roughly evenly" used to live here and the model read it as round-robin —
+  // MCQ, true/false, short answer, repeat — which is both predictable and a
+  // third true/false. A distribution is not something to ask a model for.
+  if (input.plan?.length) {
+    lines.push(
+      "",
+      "Use exactly these question types, in this order:",
+      ...input.plan.map((type, i) => `${i + 1}. ${type}`),
+    );
+  } else if (input.types.length > 1) {
+    lines.push(
+      "Vary the types across the set; do not alternate in a fixed cycle.",
+    );
   }
 
   // Top-up passes must not repeat what we already kept.

@@ -9,6 +9,7 @@ import {
   type NormalizedQuestion,
   normalizeQuestion,
 } from "@/server/ai/schemas";
+import { planTypeMix } from "@/server/ai/type-mix";
 
 export type GenerateInput = {
   topic: string;
@@ -92,6 +93,12 @@ export async function* generateQuestionsStream(
 
   const passLimit = maxPasses(input.count);
 
+  // The type of every slot, decided here rather than asked of the model — see
+  // ai/type-mix.ts. Kept as a ledger of what is still owed rather than an
+  // index, because questions get dropped for being duplicates and a positional
+  // plan would drift out of step with what actually shipped.
+  const owed = planTypeMix(input.types, input.count);
+
   while (produced < input.count && passes < passLimit) {
     passes++;
     const want = Math.min(BATCH_SIZE, input.count - produced);
@@ -108,6 +115,7 @@ export async function* generateQuestionsStream(
         count: want,
         brief: input.brief,
         avoid: asked.length ? asked.slice(-AVOID_WINDOW) : undefined,
+        plan: owed.slice(0, want),
       }),
       toolName: "emit_questions",
       toolDescription: "Emit the generated questions.",
@@ -125,6 +133,13 @@ export async function* generateQuestionsStream(
       const question = normalizeQuestion(wire);
       if (!question) continue;
 
+      // The one type worth refusing. A true/false question is a coin flip, so
+      // a set that quietly fills up with them measures luck; MCQ and short
+      // answer are both wanted, so over-delivery of those is accepted rather
+      // than risking a stall over an exact ratio.
+      const stillOwed = owed.indexOf(question.type);
+      if (question.type === "TRUE_FALSE" && stillOwed === -1) continue;
+
       const fingerprint = question.prompt
         .toLowerCase()
         .replace(/\s+/g, " ")
@@ -133,6 +148,7 @@ export async function* generateQuestionsStream(
 
       seen.add(fingerprint);
       asked.push(question.prompt);
+      if (stillOwed !== -1) owed.splice(stillOwed, 1);
       produced++;
       yieldedThisPass++;
       yield question;
