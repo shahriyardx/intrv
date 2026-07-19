@@ -1,3 +1,4 @@
+import { SEASONAL_BADGES } from "@/server/learning/seasonal";
 /**
  * Badges. Import-free and pure, and — deliberately — **derived, never stored**.
  *
@@ -42,6 +43,12 @@ export type Badge = {
   percent: number;
   /** e.g. "3 / 10" — the raw counter, for the locked state. */
   progressLabel: string;
+  /**
+   * Captured inside a time window rather than computed. These never appear
+   * locked: an unearned season is not a goal once it has closed, and while it
+   * is open it is announced elsewhere rather than sat in the grid as a blank.
+   */
+  seasonal: boolean;
 };
 
 type Rule = {
@@ -217,8 +224,30 @@ const RULES: Rule[] = [
   },
 ];
 
-/** Every badge with its earned state and progress, earned first. */
-export function evaluateBadges(stats: BadgeStats): Badge[] {
+/**
+ * Every badge with its earned state and progress, earned first.
+ *
+ * `captured` carries badge ids from the EarnedBadge table — the seasonal ones,
+ * which cannot be re-derived once their window shuts. They are merged in here
+ * rather than evaluated: the row *is* the fact.
+ */
+export function evaluateBadges(
+  stats: BadgeStats,
+  captured: ReadonlySet<string> = new Set(),
+): Badge[] {
+  const seasonal: Badge[] = SEASONAL_BADGES.filter((season) =>
+    captured.has(season.id),
+  ).map((season) => ({
+    id: season.id,
+    name: season.name,
+    description: season.description,
+    tier: "gold" as BadgeTier,
+    earned: true,
+    percent: 100,
+    progressLabel: "Earned",
+    seasonal: true,
+  }));
+
   const badges = RULES.map((rule) => {
     const have = Math.max(0, rule.of(stats));
     const earned = have >= rule.target;
@@ -230,8 +259,11 @@ export function evaluateBadges(stats: BadgeStats): Badge[] {
       earned,
       percent: earned ? 100 : Math.min(100, (have / rule.target) * 100),
       progressLabel: `${Math.min(have, rule.target)} / ${rule.target}`,
+      seasonal: false,
     };
   });
+
+  badges.push(...seasonal);
 
   // Earned first, then closest-to-earned — so the locked list reads as a
   // to-do rather than a wall.
@@ -245,4 +277,11 @@ export function earnedCount(badges: Badge[]): number {
   return badges.filter((b) => b.earned).length;
 }
 
+/**
+ * How many badges there are to collect.
+ *
+ * Seasonal ones are excluded: they are not always attainable, so counting them
+ * in the denominator would make "18/21" permanently unreachable for anyone who
+ * joined after a season shut.
+ */
 export const BADGE_COUNT = RULES.length;

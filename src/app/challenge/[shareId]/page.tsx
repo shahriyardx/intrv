@@ -2,7 +2,7 @@ import { SwordIcon } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { AcceptChallengeButton } from "@/components/challenge/accept-challenge-button";
+import { AcceptChallengeButton } from "@/components/game/challenge/accept-challenge-button";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
 import { Badge } from "@/components/ui/badge";

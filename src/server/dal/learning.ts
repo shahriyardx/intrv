@@ -7,6 +7,7 @@ import {
   type ActivityCalendar,
   buildActivityCalendar,
 } from "@/server/learning/activity";
+import { listEarnedBadgeIds } from "@/server/learning/awards";
 import {
   BADGE_COUNT,
   type Badge,
@@ -306,7 +307,7 @@ export async function getProgression(viewer: Viewer): Promise<Progression> {
     };
   }
 
-  const [sessions, retiredReviews] = await Promise.all([
+  const [sessions, retiredReviews, captured] = await Promise.all([
     prisma.interviewSession.findMany({
       where: {
         userId: owner.userId,
@@ -327,6 +328,9 @@ export async function getProgression(viewer: Viewer): Promise<Progression> {
     prisma.reviewItem.count({
       where: { userId: owner.userId, retired: true },
     }),
+    // Seasonal badges cannot be re-derived once their window shuts, so they
+    // are read from the table rather than recomputed. See learning/awards.ts.
+    listEarnedBadgeIds(owner.userId),
   ]);
 
   const todayIndex = utcDayIndex(new Date());
@@ -355,18 +359,21 @@ export async function getProgression(viewer: Viewer): Promise<Progression> {
   const { current, longest } = computeStreaks(dayIndices, todayIndex);
   const level = levelProgress(Math.round(xp));
 
-  const badges = evaluateBadges({
-    gradedCount: sessions.length,
-    currentStreak: current,
-    longestStreak: longest,
-    xp: level.xp,
-    level: level.level,
-    perfectCount,
-    topicCount: topics.size,
-    hardCount,
-    retiredReviews,
-    dailyCount,
-  });
+  const badges = evaluateBadges(
+    {
+      gradedCount: sessions.length,
+      currentStreak: current,
+      longestStreak: longest,
+      xp: level.xp,
+      level: level.level,
+      perfectCount,
+      topicCount: topics.size,
+      hardCount,
+      retiredReviews,
+      dailyCount,
+    },
+    captured,
+  );
 
   return {
     level,

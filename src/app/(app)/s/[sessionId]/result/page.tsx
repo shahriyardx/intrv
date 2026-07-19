@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ChallengeFriendButton } from "@/components/challenge/challenge-friend-button";
-import { RematchBanner } from "@/components/challenge/rematch-banner";
+import { ChallengeFriendButton } from "@/components/game/challenge/challenge-friend-button";
+import { RematchBanner } from "@/components/game/challenge/rematch-banner";
 import { SessionReward } from "@/components/game/session-reward";
 import { AssessmentSubmitted } from "@/components/org/assessment-submitted";
 import { ResultView } from "@/components/session/result-view";

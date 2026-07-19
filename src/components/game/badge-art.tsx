@@ -27,7 +27,13 @@ import type { BadgeTier } from "@/server/learning/badges";
  * silhouette still says which badge it is.
  */
 
-type Family = "volume" | "habit" | "precision" | "breadth" | "retention";
+type Family =
+  | "volume"
+  | "habit"
+  | "precision"
+  | "breadth"
+  | "retention"
+  | "season";
 
 /**
  * A hue pair per family: the back pane and the front one. Neighbours on the
@@ -45,6 +51,9 @@ const FAMILY_HUES: Record<Family, { back: string; front: string }> = {
   breadth: { back: "var(--chart-7)", front: "var(--chart-3)" },
   // amber → orange: what stuck
   retention: { back: "var(--chart-4)", front: "var(--chart-6)" },
+  // green → blue: not a family, a moment. Deliberately outside the five so a
+  // seasonal badge never looks like it belongs to a progression.
+  season: { back: "var(--chart-2)", front: "var(--chart-1)" },
 };
 
 const BADGE_FAMILY: Record<string, Family> = {
@@ -60,6 +69,8 @@ const BADGE_FAMILY: Record<string, Family> = {
   explorer: "breadth",
   "deep-end": "breadth",
   retained: "retention",
+  // Seasonal marks get their own hue so they never blend into a family.
+  "fifa-2026": "season",
   "hundred-runs": "volume",
   "level-5": "volume",
   "level-15": "volume",
@@ -216,6 +227,14 @@ const MARKS: Record<string, { back: string; front: string }> = {
     back: "M16 2 4 6.5v10c0 6.6 5 11.6 12 13.5 7-1.9 12-6.9 12-13.5v-10L16 2Z",
     front:
       "M16 6.5 8 9.4v7c0 4.5 3.3 7.9 8 9.4V6.5Zm-2.4 6.8 2.4 2.4 4.8-4.8 2.1 2.1-6.9 6.9-4.5-4.5 2.1-2.1Z",
+  },
+
+  // World Cup 2026 — a ball with a trophy behind it. Seasonal badges get an
+  // object about the occasion, not about the app.
+  "fifa-2026": {
+    back: "M16 3a13 13 0 1 1 0 26 13 13 0 0 1 0-26Z",
+    front:
+      "m16 8.4 5.4 3.9-2 6.3h-6.7l-2-6.3L16 8.4Zm0 3.7-2.4 1.7.9 2.8h3l.9-2.8L16 12.1ZM16 3a13 13 0 0 0-9.2 3.8l1.5 4.7 2.4-1.7L16 6.1V3Zm0 0v3.1l5.3 3.7 2.4 1.7 1.5-4.7A13 13 0 0 0 16 3ZM6.2 20.6l-2.9-.5a13 13 0 0 0 6.5 8.2l1.2-2.8-2-6.3-2.8 1.4Zm19.6 0-2.8-1.4-2 6.3 1.2 2.8a13 13 0 0 0 6.5-8.2l-2.9.5Z",
   },
 
   // Daily habit — the sun coming up again.

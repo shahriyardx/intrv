@@ -13,5 +13,11 @@ import "server-only";
  */
 export async function afterSessionGraded(sessionId: string): Promise<void> {
   const { scheduleReviews } = await import("@/server/learning/reviews");
+  const { awardSeasonalBadges } = await import("@/server/learning/awards");
+
   await scheduleReviews(sessionId);
+  // Separate from the review scheduling above: a seasonal badge is the one
+  // thing here that cannot be recovered by re-running later, because the
+  // window it depends on will have closed.
+  await awardSeasonalBadges(sessionId);
 }

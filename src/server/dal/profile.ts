@@ -6,6 +6,7 @@ import {
   type ActivityCalendar,
   buildActivityCalendar,
 } from "@/server/learning/activity";
+import { listEarnedBadgeIds } from "@/server/learning/awards";
 import {
   BADGE_COUNT,
   type Badge,
@@ -182,42 +183,49 @@ export async function getPublicProfile(
   const todayIndex = utcDayIndex(new Date());
   const since = new Date((todayIndex - CALENDAR_WEEKS * 7) * 86_400_000);
 
-  const [sessions, windowSessions, rank, retiredReviews, strongConcepts] =
-    await Promise.all([
-      // All graded sessions — for streak, xp, best runs, top topics.
-      prisma.interviewSession.findMany({
-        where: {
-          userId: user.id,
-          status: "GRADED",
-          score: { not: null },
-          gradedAt: { not: null },
-          mode: { not: "ASSESSMENT" },
-        },
-        select: {
-          id: true,
-          topic: true,
-          difficulty: true,
-          score: true,
-          gradedAt: true,
-          questionCount: true,
-          mode: true,
-        },
-        orderBy: { gradedAt: "desc" },
-      }),
-      // Only the heatmap window — a smaller pull keyed by day.
-      prisma.interviewSession.findMany({
-        where: {
-          userId: user.id,
-          status: "GRADED",
-          gradedAt: { not: null, gte: since },
-          mode: { not: "ASSESSMENT" },
-        },
-        select: { gradedAt: true },
-      }),
-      userRank(user.id),
-      prisma.reviewItem.count({ where: { userId: user.id, retired: true } }),
-      strongestConcepts(user.id),
-    ]);
+  const [
+    sessions,
+    windowSessions,
+    rank,
+    retiredReviews,
+    strongConcepts,
+    captured,
+  ] = await Promise.all([
+    // All graded sessions — for streak, xp, best runs, top topics.
+    prisma.interviewSession.findMany({
+      where: {
+        userId: user.id,
+        status: "GRADED",
+        score: { not: null },
+        gradedAt: { not: null },
+        mode: { not: "ASSESSMENT" },
+      },
+      select: {
+        id: true,
+        topic: true,
+        difficulty: true,
+        score: true,
+        gradedAt: true,
+        questionCount: true,
+        mode: true,
+      },
+      orderBy: { gradedAt: "desc" },
+    }),
+    // Only the heatmap window — a smaller pull keyed by day.
+    prisma.interviewSession.findMany({
+      where: {
+        userId: user.id,
+        status: "GRADED",
+        gradedAt: { not: null, gte: since },
+        mode: { not: "ASSESSMENT" },
+      },
+      select: { gradedAt: true },
+    }),
+    userRank(user.id),
+    prisma.reviewItem.count({ where: { userId: user.id, retired: true } }),
+    strongestConcepts(user.id),
+    listEarnedBadgeIds(user.id),
+  ]);
 
   let xp = 0;
   let scoreSum = 0;
@@ -297,18 +305,21 @@ export async function getPublicProfile(
 
   const level = levelProgress(Math.round(xp));
 
-  const badges = evaluateBadges({
-    gradedCount: sessions.length,
-    currentStreak: current,
-    longestStreak: longest,
-    xp: level.xp,
-    level: level.level,
-    perfectCount,
-    topicCount: topicAgg.size,
-    hardCount,
-    retiredReviews,
-    dailyCount,
-  });
+  const badges = evaluateBadges(
+    {
+      gradedCount: sessions.length,
+      currentStreak: current,
+      longestStreak: longest,
+      xp: level.xp,
+      level: level.level,
+      perfectCount,
+      topicCount: topicAgg.size,
+      hardCount,
+      retiredReviews,
+      dailyCount,
+    },
+    captured,
+  );
 
   return {
     visibility: "public",

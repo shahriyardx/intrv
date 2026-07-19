@@ -60,6 +60,7 @@ model User {
 
   following Follow[] @relation("follower")
   followers Follow[] @relation("following")
+  earnedBadges EarnedBadge[]
 
   @@unique([email])
   @@map("user")
@@ -89,6 +90,36 @@ model Follow {
   @@index([followerId, createdAt(sort: Desc)])
   @@index([followingId, createdAt(sort: Desc)])
   @@map("follow")
+}
+
+/// A badge that had to be *captured* rather than computed.
+///
+/// Almost every badge in the app is derived: evaluateBadges() re-runs the rules
+/// against current counters on each read, so a new rule applies retroactively
+/// and needs no migration. Seasonal badges break that, and this table is the
+/// exception they force.
+///
+/// A seasonal badge is earned inside a window and kept forever. Re-deriving it
+/// after the window shuts would return false — the condition is no longer
+/// reachable — so the badge would disappear the day the season ended. Awarding
+/// it writes a row here, and from then on the row *is* the fact. Nothing
+/// deletes these.
+model EarnedBadge {
+  id       String   @id @default(uuid())
+  userId   String
+  /// Matches the rule id in server/learning/badges.ts.
+  badgeId  String
+  earnedAt DateTime @default(now()) @db.Timestamptz(3)
+  /// The session that earned it, kept so an award can be audited later. Null if
+  /// the session is deleted — the badge outlives it.
+  sessionId String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Earning the same badge twice is the same fact, so the award upserts.
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@map("earned_badge")
 }
 
 model Session {
