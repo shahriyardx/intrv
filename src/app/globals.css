@@ -358,3 +358,98 @@
     break-inside: avoid;
   }
 }
+
+@layer components {
+  /* The post editor's document surface.
+     
+     These mirror components/markdown.tsx element for element, because the
+     editor is the only place an author sees their post before it ships — if
+     the two drifted, the preview would be lying. There is no typography
+     plugin here; the public renderer hand-styles each element, so this does
+     too. Change one, change the other. */
+  .prose-editor {
+    line-height: 1.75;
+  }
+  .prose-editor > :first-child {
+    margin-top: 0;
+  }
+  .prose-editor p {
+    margin-block: 1.25rem;
+    text-wrap: pretty;
+  }
+  .prose-editor h1,
+  .prose-editor h2 {
+    margin-block: 3rem 1rem;
+    font-family: var(--font-newsreader), serif;
+    font-size: var(--text-display-md, 1.5rem);
+    line-height: 1.15;
+    text-wrap: balance;
+  }
+  .prose-editor h3 {
+    margin-block: 2.5rem 0.75rem;
+    font-family: var(--font-newsreader), serif;
+    font-size: 1.25rem;
+    text-wrap: balance;
+  }
+  .prose-editor a {
+    text-decoration: underline;
+    text-decoration-color: var(--border);
+    text-underline-offset: 3px;
+  }
+  .prose-editor ul,
+  .prose-editor ol {
+    margin-block: 1.25rem;
+    padding-left: 1.5rem;
+  }
+  .prose-editor ul {
+    list-style: disc;
+  }
+  .prose-editor ol {
+    list-style: decimal;
+  }
+  .prose-editor li {
+    padding-left: 0.25rem;
+    margin-block: 0.5rem;
+  }
+  .prose-editor li::marker {
+    color: var(--muted-foreground);
+  }
+  .prose-editor blockquote {
+    margin-block: 1.5rem;
+    border-left: 2px solid var(--border);
+    padding-left: 1.25rem;
+    font-family: var(--font-newsreader), serif;
+    font-size: 1.125rem;
+    font-style: italic;
+    color: var(--muted-foreground);
+  }
+  .prose-editor code {
+    font-family: var(--font-jetbrains-mono), monospace;
+    font-size: 0.875em;
+    background: var(--secondary);
+    padding: 0.1em 0.35em;
+  }
+  .prose-editor pre {
+    margin-block: 1.5rem;
+    background: var(--secondary);
+    padding: 1rem;
+    overflow-x: auto;
+  }
+  .prose-editor pre code {
+    background: none;
+    padding: 0;
+  }
+  .prose-editor hr {
+    margin-block: 3rem;
+    border-top: 1px solid var(--border);
+  }
+  /* ProseMirror renders an empty doc as one empty paragraph, which would
+     otherwise show nothing at all to write into. */
+  .prose-editor p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    color: var(--muted-foreground);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+}

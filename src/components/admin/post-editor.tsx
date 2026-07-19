@@ -12,6 +12,7 @@ import {
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { RichEditor } from "@/components/admin/rich-editor";
 import { Markdown } from "@/components/markdown";
 import { Button } from "@/components/ui/button";
 import {
@@ -208,7 +209,8 @@ export function PostEditor({ post }: { post?: Post }) {
             <div>
               <DataLabel as="span">Body</DataLabel>
               <p className="mt-1 text-muted-foreground text-xs">
-                Markdown, GitHub flavour. Raw HTML is not rendered.
+                Formatting applies as you type. Stored as markdown; raw HTML is
+                not rendered.
               </p>
             </div>
             <div className="flex gap-1">
@@ -225,17 +227,18 @@ export function PostEditor({ post }: { post?: Post }) {
             </div>
           </div>
 
-          {/* The textarea stays mounted while previewing: unmounting it would
-              drop it from the submitted FormData, and publishing an empty body
-              is not a preview's business. */}
+          {/* The editor is a controlled island, so the value has to reach the
+              form some other way — a hidden input keeps FormData working and
+              keeps the textarea's old submit path intact. */}
+          <input type="hidden" {...form.register("body")} />
+
           <div className={cn(preview && "hidden")}>
-            <Textarea
-              id="body"
-              rows={22}
-              className="font-mono text-sm leading-relaxed"
-              placeholder={"## A heading\n\nA paragraph."}
-              aria-invalid={errors.body ? true : undefined}
-              {...form.register("body")}
+            <RichEditor
+              value={body}
+              onChange={(markdown) =>
+                form.setValue("body", markdown, { shouldValidate: true })
+              }
+              placeholder="Write the post…"
             />
           </div>
 
