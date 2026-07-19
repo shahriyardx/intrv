@@ -16,7 +16,7 @@ import {
 } from "@/components/analytics/session-status";
 import { StatTile } from "@/components/analytics/stat-tile";
 import { WeakConcepts } from "@/components/analytics/weak-concepts";
-import { BadgeArt } from "@/components/game/badge-art";
+import { BadgeShelf } from "@/components/game/badge-shelf";
 import { DailyGoal } from "@/components/game/daily-goal";
 import { LevelBar } from "@/components/game/level-bar";
 import { Button } from "@/components/ui/button";
@@ -102,17 +102,7 @@ export default async function DashboardPage() {
               with fourteen grey rectangles they have not earned is not a
               welcome. */}
           {earnedBadges.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-2">
-              {earnedBadges.map((badge) => (
-                <BadgeArt
-                  key={badge.id}
-                  id={badge.id}
-                  earned
-                  className="size-10"
-                  title={badge.name}
-                />
-              ))}
-            </div>
+            <BadgeShelf badges={earnedBadges} size="size-10" />
           ) : (
             <p className="text-muted-foreground text-sm">
               None yet — the first one lands the moment an interview is graded.

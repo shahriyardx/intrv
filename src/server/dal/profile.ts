@@ -157,13 +157,20 @@ export async function getPublicProfile(
   // Missing or banned → notFound (a banned account is not discoverable).
   if (!user || user.banned) return null;
 
-  const displayName = user.displayUsername || user.name;
+  // The account's name is the heading; the handle already has its own line
+  // underneath. This used to prefer displayUsername, so a profile printed the
+  // same handle twice and the person's actual name appeared nowhere.
+  const displayName = user.name?.trim() || user.displayUsername || username;
+
+  // Cased handle where one exists — `username` is normalised lowercase, and
+  // someone who typed MixedCase should see it back.
+  const handle = user.displayUsername?.trim() || user.username || username;
 
   // Opted out → the handle exists but the profile is private.
   if (user.leaderboardOptOut) {
     return {
       visibility: "private",
-      username: user.username ?? username,
+      username: handle,
       displayName,
     };
   }
@@ -301,7 +308,7 @@ export async function getPublicProfile(
 
   return {
     visibility: "public",
-    username: user.username ?? username,
+    username: handle,
     displayName,
     image: user.image,
     joinedAt: user.createdAt,
