@@ -1,7 +1,11 @@
 "use client";
 
-import { Popover } from "radix-ui";
 import { BadgeArt } from "@/components/game/badge-art";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 export type ShelfBadge = {
@@ -22,6 +26,10 @@ export type ShelfBadge = {
  * is the one built for click, and it brings outside-click, Escape and focus
  * handling with it rather than having them reimplemented here.
  *
+ * Styling comes from ui/popover.tsx, which mirrors ui/tooltip.tsx — including
+ * its arrow offset. Hand-rolling that here left the arrow floating in the gap
+ * above the panel.
+ *
  * Only earned badges are ever passed in: what someone has not done is not a
  * thing to publish about them.
  */
@@ -40,8 +48,8 @@ export function BadgeShelf({
     <ul className={cn("flex flex-wrap items-center gap-2", className)}>
       {badges.map((badge) => (
         <li key={badge.id}>
-          <Popover.Root>
-            <Popover.Trigger asChild>
+          <Popover>
+            <PopoverTrigger asChild>
               <button
                 type="button"
                 className="flex rounded-sm transition-opacity hover:opacity-75 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
@@ -53,26 +61,22 @@ export function BadgeShelf({
                   title={badge.name}
                 />
               </button>
-            </Popover.Trigger>
+            </PopoverTrigger>
 
-            <Popover.Portal>
-              <Popover.Content
-                side="bottom"
-                sideOffset={8}
-                collisionPadding={12}
-                className="z-50 flex w-fit max-w-64 origin-(--radix-popover-content-transform-origin) flex-col gap-0.5 bg-foreground px-3 py-2 text-background text-xs data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
-              >
-                <span className="flex items-baseline gap-2">
-                  <span className="font-medium">{badge.name}</span>
-                  <span className="font-mono text-[0.625rem] uppercase tracking-[0.12em] opacity-70">
-                    {badge.tier}
-                  </span>
+            <PopoverContent
+              side="bottom"
+              collisionPadding={12}
+              className="flex flex-col gap-0.5"
+            >
+              <span className="flex items-baseline gap-2">
+                <span className="font-medium">{badge.name}</span>
+                <span className="font-mono text-[0.625rem] uppercase tracking-[0.12em] opacity-70">
+                  {badge.tier}
                 </span>
-                <span className="opacity-80">{badge.description}</span>
-                <Popover.Arrow className="size-2.5 translate-y-[-1px] rotate-45 bg-foreground fill-foreground" />
-              </Popover.Content>
-            </Popover.Portal>
-          </Popover.Root>
+              </span>
+              <span className="opacity-80">{badge.description}</span>
+            </PopoverContent>
+          </Popover>
         </li>
       ))}
     </ul>
