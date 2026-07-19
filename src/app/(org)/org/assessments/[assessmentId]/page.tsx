@@ -1,4 +1,4 @@
-import { UsersThreeIcon } from "@phosphor-icons/react/dist/ssr";
+import { CaretRightIcon, UsersThreeIcon } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata, Route } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -147,7 +147,6 @@ export default async function ScreenReportPage({ params }: Props) {
           </section>
 
           <ScoreDistribution analytics={analytics} />
-          <QuestionQuality questions={analytics.questions} />
         </>
       ) : null}
 
@@ -237,6 +236,30 @@ export default async function ScreenReportPage({ params }: Props) {
           </Table>
         )}
       </section>
+
+      {analytics && analytics.started > 0 ? (
+        // Folded by default: this is a per-question breakdown, and left open it
+        // pushed the candidate list — the reason anyone opens this page — below
+        // the fold. <details> rather than an accordion component keeps the
+        // whole page server-rendered.
+        <details className="group rounded-md border">
+          <summary className="flex cursor-pointer list-none items-center gap-3 p-4 hover:bg-muted/50">
+            <CaretRightIcon
+              aria-hidden
+              weight="bold"
+              className="size-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-90"
+            />
+            <DataLabel as="span">Question quality</DataLabel>
+            <span className="ml-auto font-mono text-muted-foreground text-xs tabular">
+              {analytics.questions.length}{" "}
+              {analytics.questions.length === 1 ? "question" : "questions"}
+            </span>
+          </summary>
+          <div className="border-t p-4">
+            <QuestionQuality questions={analytics.questions} />
+          </div>
+        </details>
+      ) : null}
     </div>
   );
 }

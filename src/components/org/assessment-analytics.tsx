@@ -138,13 +138,10 @@ const VERDICT = {
 export function QuestionQuality({ questions }: { questions: QuestionStat[] }) {
   if (questions.length === 0) {
     return (
-      <section className="space-y-2">
-        <DataLabel as="h3">Question quality</DataLabel>
-        <p className="text-sm text-muted-foreground">
-          Once candidates have been graded, each question's pass rate shows up
-          here — including which ones aren't telling you anything.
-        </p>
-      </section>
+      <p className="text-muted-foreground text-sm">
+        Once candidates have been graded, each question's pass rate shows up
+        here — including which ones aren't telling you anything.
+      </p>
     );
   }
 
@@ -155,7 +152,8 @@ export function QuestionQuality({ questions }: { questions: QuestionStat[] }) {
   return (
     <section className="space-y-4">
       <div className="space-y-1.5">
-        <DataLabel as="h3">Question quality</DataLabel>
+        {/* No heading: the <details> summary on the assessment page is the
+            heading, and repeating it inside reads as a stutter. */}
         <Prose className="text-sm text-muted-foreground">
           <p>
             {flagged === 0
