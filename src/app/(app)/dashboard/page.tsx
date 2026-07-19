@@ -16,7 +16,6 @@ import {
 } from "@/components/analytics/session-status";
 import { StatTile } from "@/components/analytics/stat-tile";
 import { WeakConcepts } from "@/components/analytics/weak-concepts";
-import { BadgeShelf } from "@/components/game/badge-shelf";
 import { DailyGoal } from "@/components/game/daily-goal";
 import { LevelBar } from "@/components/game/level-bar";
 import { Button } from "@/components/ui/button";
@@ -71,7 +70,6 @@ export default async function DashboardPage() {
   }
 
   const gradedNone = stats.gradedSessions === 0;
-  const earnedBadges = progression.badges.filter((badge) => badge.earned);
 
   return (
     <div className="space-y-14">
@@ -86,41 +84,23 @@ export default async function DashboardPage() {
           <DataLabel as="h2">Level</DataLabel>
           <LevelBar level={progression.level} />
         </div>
+        {/* Interviews taken sits beside the level rather than badges: the
+            earned badges are already on the shelf under the name above, so a
+            second copy here was just duplication. */}
         <div className="space-y-3">
-          <div className="flex items-baseline justify-between gap-4">
-            <DataLabel as="h2">Badges</DataLabel>
-            <Link
-              href="/dashboard/badges"
-              className="font-mono text-muted-foreground text-xs tabular underline underline-offset-4 hover:text-foreground"
-            >
-              {progression.earned} / {progression.total}
-            </Link>
-          </div>
-          {/* Earned only, and bare — no names, no descriptions, no locked
-              placeholders. This is a shelf of what you have; /dashboard/badges
-              is where the list of what each one takes belongs. Greeting someone
-              with fourteen grey rectangles they have not earned is not a
-              welcome. */}
-          {earnedBadges.length > 0 ? (
-            <BadgeShelf badges={earnedBadges} size="size-10" />
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              None yet — the first one lands the moment an interview is graded.
-            </p>
-          )}
+          <DataLabel as="h2">Interviews taken</DataLabel>
+          <p className="font-display text-display-lg tabular leading-none">
+            {stats.totalSessions}
+          </p>
+          <p className="text-muted-foreground text-xs">
+            {stats.gradedSessions === stats.totalSessions
+              ? "All graded"
+              : `${stats.gradedSessions} graded`}
+          </p>
         </div>
       </section>
 
-      <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile
-          label="Interviews taken"
-          value={stats.totalSessions}
-          note={
-            stats.gradedSessions === stats.totalSessions
-              ? "All graded"
-              : `${stats.gradedSessions} graded`
-          }
-        />
+      <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <StatTile
           label="Average score"
           // An average over nothing is not 0 — it doesn't exist yet.
