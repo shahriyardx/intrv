@@ -26,12 +26,37 @@ export default async function MistakesPage() {
     getReviewConceptState(viewer),
   ]);
 
-  if (items.length === 0) {
+  // Retired means the concept was either mastered on the ladder or dismissed
+  // with "I've got this". Either way it is gone from here — done is done, and a
+  // list of things you have finished with is just more to read. The misses
+  // themselves are untouched in the database; only this view hides them.
+  const groups = groupMistakesByConcept(items).filter(
+    (group) => !conceptState.retired.has(group.concept),
+  );
+
+  // Count what is actually on screen, not what was fetched. Deduped by question
+  // id because a question carrying three concepts appears in three groups —
+  // summing group sizes would inflate the number the moment anything is tagged
+  // more than once.
+  const shownCount = new Set(
+    groups.flatMap((group) => group.mistakes.map((m) => m.question.id)),
+  ).size;
+
+  // Nothing fetched, or everything dismissed: both are "nothing to review", and
+  // the second must not render a headline over an empty list.
+  if (shownCount === 0) {
+    const clearedEverything = items.length > 0;
     return (
       <EmptyState
         icon={<SealCheckIcon />}
-        title="No mistakes to review"
-        description="Once a graded interview turns up a question you got wrong, it lands here — with the right answer and why it's right, grouped by what it was testing."
+        title={
+          clearedEverything ? "Nothing left to review" : "No mistakes to review"
+        }
+        description={
+          clearedEverything
+            ? "You've cleared every concept here. New misses will show up as you take more interviews — and anything you dismissed comes back on its own if you miss it again."
+            : "Once a graded interview turns up a question you got wrong, it lands here — with the right answer and why it's right, grouped by what it was testing."
+        }
         action={
           <Button asChild>
             <Link href="/start">Start an interview</Link>
@@ -41,22 +66,14 @@ export default async function MistakesPage() {
     );
   }
 
-  // Retired means the concept was either mastered on the ladder or dismissed
-  // with "I've got this". Either way it is gone from here — done is done, and a
-  // list of things you have finished with is just more to read. The misses
-  // themselves are untouched in the database; only this view hides them.
-  const groups = groupMistakesByConcept(items).filter(
-    (group) => !conceptState.retired.has(group.concept),
-  );
-
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <Prose className="text-sm text-muted-foreground">
           <p>
-            {items.length} {items.length === 1 ? "question" : "questions"} you
-            got wrong or only partly right, grouped by what they were testing.
-            The concepts that cost you the most come first.
+            {shownCount} {shownCount === 1 ? "question" : "questions"} you got
+            wrong or only partly right, grouped by what they were testing. The
+            concepts that cost you the most come first.
           </p>
         </Prose>
         {capped ? (
