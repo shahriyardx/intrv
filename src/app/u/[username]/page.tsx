@@ -14,7 +14,7 @@ import {
   type TrendDatum,
 } from "@/components/analytics/score-trend-chart";
 import { StatRow, StatTile } from "@/components/analytics/stat-tile";
-import { BadgeGrid } from "@/components/game/badge-grid";
+import { BadgeArt } from "@/components/game/badge-art";
 import { LevelBar } from "@/components/game/level-bar";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
@@ -75,7 +75,17 @@ async function Profile({ params }: Props) {
 
   return (
     <div className="space-y-14">
-      <ProfileHeader profile={profile} />
+      <ProfileHeader
+        profile={profile}
+        badges={
+          profile.visibility === "public"
+            ? profile.badges.filter((badge) => badge.earned)
+            : undefined
+        }
+        badgeTotal={
+          profile.visibility === "public" ? profile.badgeTotal : undefined
+        }
+      />
       {profile.visibility === "private" ? (
         <PrivateNotice />
       ) : (
@@ -87,6 +97,8 @@ async function Profile({ params }: Props) {
 
 function ProfileHeader({
   profile,
+  badges,
+  badgeTotal,
 }: {
   profile: {
     displayName: string;
@@ -95,6 +107,9 @@ function ProfileHeader({
     joinedAt?: Date;
     level?: { level: number; title: string };
   };
+  /** Earned badges only, or undefined for a private profile. */
+  badges?: { id: string; name: string }[];
+  badgeTotal?: number;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-4">
@@ -138,6 +153,29 @@ function ProfileHeader({
             </>
           ) : null}
         </p>
+
+        {/* Earned only, and bare — the same shelf as the dashboard. A visitor
+            has no use for a list of what this person has not done yet, and
+            printing their unearned badges on a public page would be a strange
+            thing to do to someone. */}
+        {badges && badges.length > 0 ? (
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            {badges.map((badge) => (
+              <BadgeArt
+                key={badge.id}
+                id={badge.id}
+                earned
+                className="size-8"
+                title={badge.name}
+              />
+            ))}
+            {badgeTotal ? (
+              <span className="ml-1 font-mono text-muted-foreground text-xs tabular">
+                {badges.length}/{badgeTotal}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -224,16 +262,6 @@ function PublicBody({ profile }: { profile: PublicProfile }) {
         </p>
       ) : (
         <>
-          <section className="space-y-5">
-            <div className="flex items-baseline justify-between gap-4">
-              <DataLabel as="h2">Badges</DataLabel>
-              <span className="font-mono text-muted-foreground text-xs tabular">
-                {profile.badgesEarned} / {profile.badgeTotal}
-              </span>
-            </div>
-            <BadgeGrid badges={profile.badges} />
-          </section>
-
           {/* One point is a dot, not a trend — show the number instead. */}
           {trendData.length > 1 ? (
             <section className="space-y-5">
