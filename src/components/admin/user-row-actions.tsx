@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   banUserAction,
+  deleteUserAction,
   setUserRoleAction,
   unbanUserAction,
 } from "@/server/actions/admin";
@@ -43,6 +44,7 @@ type Props = {
  */
 export function UserRowActions({ userId, email, role, banned, isSelf }: Props) {
   const [banOpen, setBanOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [roleState, roleAction, rolePending] = useActionState(
     setUserRoleAction,
     null,
@@ -105,9 +107,22 @@ export function UserRowActions({ userId, email, role, banned, isSelf }: Props) {
             </DropdownMenuItem>
           )}
 
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={isSelf}
+            onSelect={(event) => {
+              event.preventDefault();
+              setDeleteOpen(true);
+            }}
+          >
+            Delete user…
+          </DropdownMenuItem>
+
           {isSelf ? (
             <p className="px-2 py-1.5 text-[0.6875rem] text-muted-foreground">
-              That's you — no self-ban, no self-demote.
+              That's you — no self-ban, no self-demote, no self-delete.
             </p>
           ) : null}
         </DropdownMenuContent>
@@ -119,7 +134,94 @@ export function UserRowActions({ userId, email, role, banned, isSelf }: Props) {
         userId={userId}
         email={email}
       />
+
+      <DeleteDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        userId={userId}
+        email={email}
+      />
     </>
+  );
+}
+
+/**
+ * Deleting is the one thing here with no undo, so it asks for the email typed
+ * out rather than a second click. A confirm button you can hit by reflex is not
+ * a confirmation.
+ */
+function DeleteDialog({
+  open,
+  onOpenChange,
+  userId,
+  email,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  userId: string;
+  email: string;
+}) {
+  const [state, action, pending] = useActionState(deleteUserAction, null);
+  const [typed, setTyped] = useState("");
+
+  useEffect(() => {
+    if (state?.ok) onOpenChange(false);
+  }, [state, onOpenChange]);
+  useReport(state);
+
+  // Reset between openings, or the previous confirmation would still be armed.
+  useEffect(() => {
+    if (!open) setTyped("");
+  }, [open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <form action={action}>
+          <input type="hidden" name="userId" value={userId} />
+          <DialogHeader>
+            <DialogTitle>Delete {email}</DialogTitle>
+            <DialogDescription>
+              Permanently removes the account and everything attached to it —
+              interviews, answers, review items and sessions. This cannot be
+              undone. Anything they published to the blog stays up, and cost
+              telemetry is unaffected. If you only want them locked out, ban
+              them instead.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="my-6 space-y-2">
+            <Label htmlFor="confirmEmail">
+              Type <span className="font-mono">{email}</span> to confirm
+            </Label>
+            <Input
+              id="confirmEmail"
+              value={typed}
+              onChange={(event) => setTyped(event.target.value)}
+              autoComplete="off"
+              placeholder={email}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="destructive"
+              disabled={pending || typed !== email}
+            >
+              {pending ? "Deleting…" : "Delete permanently"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 

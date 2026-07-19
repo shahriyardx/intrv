@@ -66,9 +66,11 @@ export default async function AdminUsersPage(props: {
             defaultValue={query ?? ""}
             placeholder="Email or name"
             aria-label="Search users"
-            className="h-8 w-56"
+            className="w-56"
           />
-          <Button type="submit" variant="outline" size="sm">
+          {/* Default size, not sm: the Input is h-8 and sm buttons are h-7, so
+              pairing them left the control row a pixel out of line. */}
+          <Button type="submit" variant="outline">
             <MagnifyingGlassIcon aria-hidden />
             Search
           </Button>

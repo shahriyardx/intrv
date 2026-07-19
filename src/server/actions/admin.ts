@@ -148,3 +148,50 @@ export async function unbanUserAction(
   revalidatePath("/admin/users");
   return { ok: true, message: "Ban lifted." };
 }
+
+/**
+ * Delete a user and everything cascading off them.
+ *
+ * This is the only irreversible action on this dashboard. It removes their
+ * account rows, auth sessions, interview history, answers and review items —
+ * every FK back to User is `onDelete: Cascade`. Two things deliberately
+ * survive:
+ *
+ * - **Blog posts**, whose author is `onDelete: SetNull`. Published writing is
+ *   not the author's to take down by leaving.
+ * - **AiCall telemetry**, which has no user FK at all. It is cost accounting,
+ *   it carries no prompt text, and losing it would silently rewrite spend
+ *   history.
+ *
+ * Prefer banning. A ban revokes sessions and locks the account while keeping
+ * the record; this exists for the cases a ban cannot answer — a deletion
+ * request, or a spam signup worth erasing rather than archiving.
+ */
+export async function deleteUserAction(
+  _prev: unknown,
+  formData: FormData,
+): Promise<AdminActionState> {
+  const admin = await requireFreshAdmin();
+  if (!admin) return NOT_FOUND;
+
+  const parsed = userIdSchema.safeParse({ userId: formData.get("userId") });
+  if (!parsed.success) return fieldError(parsed.error);
+
+  // better-auth guards this too, but an admin deleting themselves would take
+  // the dashboard with them, so it is refused here first and explicitly.
+  if (parsed.data.userId === admin.userId) {
+    return { ok: false, error: "You can't delete your own account." };
+  }
+
+  try {
+    await auth.api.removeUser({
+      body: { userId: parsed.data.userId },
+      headers: await headers(),
+    });
+  } catch (error) {
+    return failed(error, "Couldn't delete that user.");
+  }
+
+  revalidatePath("/admin/users");
+  return { ok: true, message: "User deleted, along with all of their data." };
+}
