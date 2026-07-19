@@ -5,6 +5,7 @@ import {
 } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { BadgeArt } from "@/components/game/badge-art";
 import { BadgeGrid } from "@/components/game/badge-grid";
 import { DailyGoal } from "@/components/game/daily-goal";
 import { LevelBar } from "@/components/game/level-bar";
@@ -201,6 +202,17 @@ export default function DesignPage() {
         </div>
 
         <BadgeGrid badges={SAMPLE_BADGES} />
+
+        {/* Every medallion at both states, side by side — the only way to check
+            twelve engravings read as twelve distinct things. */}
+        <div className="grid grid-cols-6 gap-6 border-t pt-8 sm:grid-cols-12">
+          {ALL_BADGES.map((b) => (
+            <div key={b.id} className="flex flex-col items-center gap-2">
+              <BadgeArt id={b.id} tier={b.tier} earned className="size-12" />
+              <BadgeArt id={b.id} tier={b.tier} earned={false} />
+            </div>
+          ))}
+        </div>
       </section>
     </main>
   );
@@ -208,6 +220,19 @@ export default function DesignPage() {
 
 // Mid-progress stats: some earned, some close, some untouched — the grid's
 // three states in one screenshot.
+const ALL_BADGES = evaluateBadges({
+  gradedCount: 999,
+  currentStreak: 99,
+  longestStreak: 99,
+  xp: 99_999,
+  level: 30,
+  perfectCount: 99,
+  topicCount: 99,
+  hardCount: 99,
+  retiredReviews: 99,
+  dailyCount: 99,
+});
+
 const SAMPLE_BADGES = evaluateBadges({
   gradedCount: 12,
   currentStreak: 5,

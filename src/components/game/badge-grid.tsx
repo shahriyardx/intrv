@@ -1,9 +1,4 @@
-import {
-  LockSimpleIcon,
-  MedalIcon,
-  SealCheckIcon,
-  TrophyIcon,
-} from "@phosphor-icons/react/dist/ssr";
+import { BadgeArt } from "@/components/game/badge-art";
 import { cn } from "@/lib/utils";
 import type { Badge as BadgeModel, BadgeTier } from "@/server/learning/badges";
 
@@ -12,15 +7,9 @@ import type { Badge as BadgeModel, BadgeTier } from "@/server/learning/badges";
  * cannot see is not a goal — but they are muted and carry their own progress
  * counter so the grid reads as a to-do list rather than a wall of failure.
  *
- * Tier is carried by the icon as well as the colour: three tiers distinguished
- * only by hue would be three identical shapes to a colour-blind reader.
+ * The artwork is in badge-art.tsx: hue names the family, the ring names the
+ * tier, the engraving names the badge. Tier is never carried by colour alone.
  */
-const TIER_ICON: Record<BadgeTier, typeof MedalIcon> = {
-  bronze: SealCheckIcon,
-  silver: MedalIcon,
-  gold: TrophyIcon,
-};
-
 const TIER_LABEL: Record<BadgeTier, string> = {
   bronze: "Bronze",
   silver: "Silver",
@@ -49,8 +38,6 @@ export function BadgeGrid({
 }
 
 function BadgeCard({ badge }: { badge: BadgeModel }) {
-  const Icon = badge.earned ? TIER_ICON[badge.tier] : LockSimpleIcon;
-
   return (
     <li
       className={cn(
@@ -58,13 +45,11 @@ function BadgeCard({ badge }: { badge: BadgeModel }) {
         !badge.earned && "text-muted-foreground",
       )}
     >
-      <Icon
-        aria-hidden
-        weight={badge.earned ? "fill" : "duotone"}
-        className={cn(
-          "mt-0.5 size-5 shrink-0",
-          badge.earned ? "text-primary" : "text-muted-foreground/60",
-        )}
+      <BadgeArt
+        id={badge.id}
+        tier={badge.tier}
+        earned={badge.earned}
+        className="mt-0.5"
       />
       <div className="min-w-0 flex-1 space-y-1.5">
         <div className="flex items-baseline justify-between gap-3">
