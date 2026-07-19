@@ -4,7 +4,8 @@ import {
   SealCheckIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import { format, formatDistanceToNow } from "date-fns";
-import type { Metadata } from "next";
+import type { Metadata, Route } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ActivityHeatmap } from "@/components/analytics/activity-heatmap";
@@ -15,6 +16,7 @@ import {
 } from "@/components/analytics/score-trend-chart";
 import { StatRow, StatTile } from "@/components/analytics/stat-tile";
 import { BadgeShelf, type ShelfBadge } from "@/components/game/badge-shelf";
+import { FollowButton } from "@/components/game/follow-button";
 import { LevelBar } from "@/components/game/level-bar";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
@@ -23,6 +25,7 @@ import { shell } from "@/components/ui/page";
 import { DataLabel } from "@/components/ui/prose";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { type FollowState, getFollowState } from "@/server/dal/follows";
 import {
   getPublicProfile,
   type ProfileConcept,
@@ -30,6 +33,7 @@ import {
   type ProfileRun,
   type PublicProfile,
 } from "@/server/dal/profile";
+import { getViewer } from "@/server/dal/session";
 
 type Props = { params: Promise<{ username: string }> };
 
@@ -73,10 +77,17 @@ async function Profile({ params }: Props) {
   // Missing or banned: nothing here, and nothing about which.
   if (!profile) notFound();
 
+  // Follow state is per-viewer, so it is read here rather than baked into the
+  // profile — a private profile still has followers and can still be followed.
+  const viewer = await getViewer();
+  const follow = await getFollowState(viewer, profile.userId);
+
   return (
     <div className="space-y-14">
       <ProfileHeader
         profile={profile}
+        follow={follow}
+        canFollow={viewer.kind === "user"}
         badges={
           profile.visibility === "public"
             ? profile.badges.filter((badge) => badge.earned)
@@ -95,6 +106,8 @@ async function Profile({ params }: Props) {
 function ProfileHeader({
   profile,
   badges,
+  follow,
+  canFollow,
 }: {
   profile: {
     displayName: string;
@@ -105,9 +118,11 @@ function ProfileHeader({
   };
   /** Earned badges only, or undefined for a private profile. */
   badges?: ShelfBadge[];
+  follow: FollowState;
+  canFollow: boolean;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-4">
+    <div className="flex flex-wrap items-start gap-4">
       {profile.image ? (
         // biome-ignore lint/performance/noImgElement: remote avatar from an arbitrary OAuth provider
         <img
@@ -149,10 +164,46 @@ function ProfileHeader({
           ) : null}
         </p>
 
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+          <Link
+            href={`/u/${profile.username}/followers` as Route}
+            className="underline decoration-border underline-offset-[3px] hover:decoration-foreground"
+          >
+            <span className="font-medium tabular">{follow.followers}</span>{" "}
+            <span className="text-muted-foreground">
+              {follow.followers === 1 ? "follower" : "followers"}
+            </span>
+          </Link>
+          <Link
+            href={`/u/${profile.username}/following` as Route}
+            className="underline decoration-border underline-offset-[3px] hover:decoration-foreground"
+          >
+            <span className="font-medium tabular">{follow.following}</span>{" "}
+            <span className="text-muted-foreground">following</span>
+          </Link>
+          {follow.followsViewer ? (
+            <span className="border px-1.5 py-0.5 font-mono text-[0.625rem] text-muted-foreground uppercase tracking-[0.12em]">
+              Follows you
+            </span>
+          ) : null}
+        </p>
+
         {/* Earned only, and no count: a visitor has no use for how many this
             person has *not* got. Tap one for what it is. */}
         {badges ? <BadgeShelf badges={badges} className="mt-2.5" /> : null}
       </div>
+
+      {/* Not shown signed out or on your own profile: the action refuses both,
+          and offering a button that will be refused is worse than none. */}
+      {canFollow && !follow.isSelf ? (
+        <div className="ml-auto">
+          <FollowButton
+            username={profile.username}
+            initialFollowing={follow.isFollowing}
+            initialFollowers={follow.followers}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

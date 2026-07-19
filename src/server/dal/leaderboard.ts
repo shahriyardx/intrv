@@ -30,6 +30,8 @@ export type LeaderboardRow = {
   rank: number;
   userId: string;
   name: string;
+  /** Handle for /u/[username]. Null only for rows predating the username plugin. */
+  username: string | null;
   points: number;
   sessions: number;
   averageScore: number;
@@ -39,6 +41,8 @@ export type LeaderboardRow = {
 type RawRow = {
   userId: string;
   name: string;
+  username: string | null;
+  displayUsername: string | null;
   points: number;
   sessions: bigint;
   averageScore: number;
@@ -63,6 +67,8 @@ export async function getLeaderboard(
     SELECT
       s."userId"                                   AS "userId",
       u."name"                                     AS "name",
+      u."username"                                 AS "username",
+      u."displayUsername"                          AS "displayUsername",
       SUM(
         s."score"
         * CASE s."difficulty"
@@ -87,7 +93,7 @@ export async function getLeaderboard(
       AND u."leaderboardOptOut" = false
       AND COALESCE(u."banned", false) = false
       ${sinceClause(since)}
-    GROUP BY s."userId", u."name"
+    GROUP BY s."userId", u."name", u."username", u."displayUsername"
     HAVING COUNT(*) >= ${MIN_SESSIONS}
     ORDER BY "points" DESC, "sessions" ASC
     LIMIT ${limit}
@@ -97,6 +103,8 @@ export async function getLeaderboard(
     rank: i + 1,
     userId: row.userId,
     name: row.name,
+    // Cased handle where there is one; the route lowercases on lookup anyway.
+    username: row.displayUsername ?? row.username,
     // Points are a game score, not a measurement: a whole number reads better
     // and nobody is served by "1240.7381".
     points: Math.round(row.points),

@@ -97,6 +97,8 @@ export type ProfileConcept = {
 
 export type PublicProfile = {
   visibility: "public";
+  /** Needed to resolve follow state. Not a secret — the handle already names them. */
+  userId: string;
   username: string;
   displayName: string;
   image: string | null;
@@ -128,6 +130,7 @@ export type PublicProfile = {
 
 export type PrivateProfile = {
   visibility: "private";
+  userId: string;
   username: string;
   displayName: string;
 };
@@ -170,6 +173,7 @@ export async function getPublicProfile(
   if (user.leaderboardOptOut) {
     return {
       visibility: "private",
+      userId: user.id,
       username: handle,
       displayName,
     };
@@ -308,6 +312,7 @@ export async function getPublicProfile(
 
   return {
     visibility: "public",
+    userId: user.id,
     username: handle,
     displayName,
     image: user.image,

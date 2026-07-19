@@ -249,7 +249,19 @@ function Row({ row, isViewer }: { row: LeaderboardRow; isViewer: boolean }) {
           medal ? "font-display text-lg" : "text-sm",
         )}
       >
-        {row.name}
+        {/* A handle is what makes a row reachable. Rows predating the username
+            plugin have none, so the name stays plain text rather than a link
+            to nowhere. */}
+        {row.username ? (
+          <Link
+            href={`/u/${row.username}` as Route}
+            className="underline decoration-border underline-offset-[3px] transition-colors hover:decoration-foreground"
+          >
+            {row.name}
+          </Link>
+        ) : (
+          row.name
+        )}
         {isViewer ? <span className={cn(LABEL, "ml-2")}>you</span> : null}
       </TableCell>
 

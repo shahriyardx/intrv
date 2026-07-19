@@ -58,8 +58,37 @@ model User {
   orgMemberships  Member[]
   sentInvitations Invitation[]
 
+  following Follow[] @relation("follower")
+  followers Follow[] @relation("following")
+
   @@unique([email])
   @@map("user")
+}
+
+/// One person following another. Directed and not symmetric — a follow back is
+/// a second row.
+///
+/// There is no state beyond existence: no pending, no request, no block. A
+/// profile is already public to anyone with the link, so following it grants
+/// nothing that was not already readable and needs nobody's approval. If
+/// private accounts ever land, that is when this grows a status column.
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+
+  follower  User @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  /// Following someone twice is the same fact as following them once, so the
+  /// action can upsert without reading first.
+  @@unique([followerId, followingId])
+  /// Both directions get an index: "who do I follow" and "who follows them"
+  /// are both list queries, and the counts on a profile hit them per view.
+  @@index([followerId, createdAt(sort: Desc)])
+  @@index([followingId, createdAt(sort: Desc)])
+  @@map("follow")
 }
 
 model Session {
