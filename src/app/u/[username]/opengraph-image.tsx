@@ -157,7 +157,7 @@ export default async function Image({
         eyebrow="AI interview practice"
         headline="No such profile."
         level={null}
-        stats={[{ label: "Practice anything", value: "no account needed" }]}
+        stats={[{ label: "Practice anything", value: "free to start" }]}
       />
     ) : profile.visibility === "private" ? (
       <Card

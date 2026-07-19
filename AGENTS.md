@@ -14,16 +14,29 @@ execution.
 There is **no guest identity**: no guest cookie, no anonymous user row, nothing
 to migrate at sign-up.
 
-- A session created while signed out has `userId = null` and is readable by
-  **anyone holding its id**. The random UUID in the URL *is* the capability,
-  like an unlisted link. That is the product: no account, take the interview,
-  read the result.
-- A session created while signed in belongs to that user and nobody else — an
-  anonymous visitor who learns the id still gets nothing.
+**Taking an interview requires an account.** Every generation path — custom,
+job description, daily, review, planned, rematch, assessment — refuses an
+anonymous viewer and redirects to sign-in. This was not always true, and the
+reason it changed is money: generation is a DeepSeek call, and an identity-less
+caller cannot be rate limited (see `src/server/dal/limits.ts`).
+
+So `userId = null` now means **legacy**, not "guest":
+
+- Sessions created before the gate have `userId = null` and are readable by
+  **anyone holding the id**. The random UUID in the URL *is* the capability,
+  like an unlisted link. These still work on purpose — the link was the only
+  key those sessions ever had, and breaking them would strand real results.
+- Every new session belongs to its user and nobody else.
 
 `canAccessSession()` in `src/server/dal/owner.ts` is the one place that decides
-this. `ownerWhere()` is only for *listing* a signed-in user's history and
-returns `null` (never `{}`) for anonymous viewers.
+this, and it is deliberately unchanged: it still grants access to an unowned
+session, because that is exactly the legacy case above. `ownerWhere()` is only
+for *listing* a signed-in user's history and returns `null` (never `{}`) for
+anonymous viewers.
+
+Reading stays open where it should: `/r/[shareId]` share pages, `/u/[username]`
+profiles and the leaderboard need no account. The gate is on *generating*, not
+on looking.
 
 ## Admin
 

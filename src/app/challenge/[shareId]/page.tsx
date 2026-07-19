@@ -84,7 +84,7 @@ async function ChallengeInvite({ params }: Props) {
         <AcceptChallengeButton shareId={shareId} />
       </div>
       <p className="mt-4 text-muted-foreground text-xs">
-        No account needed. Sign in first if you want it kept in your history.
+        You'll need an account to take it — the result goes in your history.
       </p>
     </div>
   );

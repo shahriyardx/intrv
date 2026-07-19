@@ -53,6 +53,12 @@ export async function acceptChallenge(
     return { ok: false, error: "That challenge could not be found." };
   }
 
+  // Taking a challenge generates nothing, but it does mint a session and
+  // grade it, so it needs an owner like any other attempt.
+  if (viewer.kind !== "user") {
+    redirect(`/sign-in?next=${encodeURIComponent(`/challenge/${shareId}`)}`);
+  }
+
   const quota = await checkInterviewQuota(viewer);
   if (!quota.ok) return { ok: false, error: quota.message };
 

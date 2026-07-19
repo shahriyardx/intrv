@@ -52,6 +52,9 @@ export async function createInterviewSession(
 
   const viewer = await getViewer();
 
+  // Generation costs a model call, so it needs an identity to bill it to.
+  if (viewer.kind !== "user") redirect("/sign-in?next=%2Fstart");
+
   const quota = await checkInterviewQuota(viewer);
   if (!quota.ok) return { ok: false, error: quota.message };
 

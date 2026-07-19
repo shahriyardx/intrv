@@ -2,6 +2,7 @@ import { CalendarBlankIcon, TrophyIcon } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { AuthGate } from "@/components/auth/auth-gate";
 import { OrgAccountGate } from "@/components/org/org-account-gate";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
@@ -30,6 +31,9 @@ export const metadata: Metadata = {
 export default function DailyPage() {
   return (
     <>
+      <Suspense fallback={null}>
+        <AuthGate fallback="/daily" />
+      </Suspense>
       <OrgAccountGate />
       <SiteHeader>
         <SiteNav />
@@ -125,22 +129,7 @@ async function DailyBody() {
               </span>
             </div>
           ) : (
-            <>
-              <StartDailyButton />
-              {viewer.kind !== "user" ? (
-                <p className="mt-3 max-w-md text-muted-foreground text-xs">
-                  You can play signed out, but only signed-in scores are ranked
-                  —{" "}
-                  <Link
-                    href="/sign-in?next=/daily"
-                    className="text-foreground underline underline-offset-4"
-                  >
-                    sign in
-                  </Link>{" "}
-                  to appear on the board.
-                </p>
-              ) : null}
-            </>
+            <StartDailyButton />
           )}
         </div>
       </section>

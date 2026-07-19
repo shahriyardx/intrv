@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { AuthGate } from "@/components/auth/auth-gate";
 import { OrgAccountGate } from "@/components/org/org-account-gate";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
@@ -19,6 +20,9 @@ export const metadata: Metadata = {
 export default function StartPage() {
   return (
     <>
+      <Suspense fallback={null}>
+        <AuthGate fallback="/start" />
+      </Suspense>
       <OrgAccountGate />
       <SiteHeader>
         <SiteNav />

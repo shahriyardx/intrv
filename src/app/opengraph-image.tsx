@@ -113,7 +113,7 @@ export default async function Image() {
         <span style={{ fontSize: 26, color: MUTED }}>
           Any topic. Graded feedback, not just a number.
         </span>
-        <Eyebrow>No account needed</Eyebrow>
+        <Eyebrow>Free to start</Eyebrow>
       </div>
     </div>,
     { ...size, fonts: fonts.length > 0 ? fonts : undefined },

@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     template: "%s · Intrv",
   },
   description:
-    "Generate a quiz or interview on any topic, answer it, and get graded feedback that tells you what to study next. No account required.",
+    "Generate a quiz or interview on any topic, answer it, and get graded feedback that tells you what to study next. Free to use.",
 };
 
 export const viewport: Viewport = {

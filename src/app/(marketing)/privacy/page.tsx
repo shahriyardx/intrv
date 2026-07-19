@@ -84,7 +84,7 @@ export default function PrivacyPage() {
         points={[
           "Your topic and your short answers are sent to DeepSeek, a third-party AI company, to write and grade your interview. Your name, email and IP are not.",
           "There is no advertising, no third-party analytics and no tracking of any kind on this site.",
-          "If you're signed out, anyone who has your session's URL can read that session. The link is the key.",
+          "Taking an interview requires an account. Older sessions taken before that was true have no owner, and anyone holding the URL can still read them.",
           "A share link you create is public to anyone holding it. It shows your answers, not your name.",
           "One cookie when you're signed in. Your theme preference lives in your own browser, not on our server.",
           "Deleting your account deletes your interviews with it.",
@@ -169,14 +169,14 @@ export default function PrivacyPage() {
         <LegalList
           items={[
             {
-              term: "Signed out — the URL is the key",
+              term: "Older signed-out sessions — the URL is the key",
               detail:
-                "A session you start while signed out has no owner. Anybody who has its URL can open it and read the questions and your answers. There is no password on it and we cannot tell a stranger holding the link apart from you. The URL contains a long random ID, so it is not guessable, but it is not secret either: if you paste it into a group chat, everyone in that chat can read your session. That is the deal that lets you use Intrv without an account.",
+                "Taking an interview now requires an account, so no new session is ownerless. Sessions taken before that change have no owner: anybody with the URL can open one and read the questions and the answers. There is no password on it and we cannot tell a stranger holding the link apart from the person who took it. The URL contains a long random ID, so it is not guessable — but it is not secret either.",
             },
             {
-              term: "Signed in — only you",
+              term: "Your sessions — only you",
               detail:
-                "A session you start while signed in belongs to your account. A stranger who somehow learned its URL gets nothing. This is the one real advantage of an account, privacy-wise.",
+                "Every interview you take belongs to your account. A stranger who somehow learned its URL gets nothing.",
             },
             {
               term: "Share links are public",
@@ -245,12 +245,12 @@ export default function PrivacyPage() {
           no text.
         </p>
         <p>
-          Interviews you took <em>while signed out</em> are a different matter.
-          They aren't linked to any account, which means we have no way to look
-          at one and tell that it was yours. If you want one deleted, send us
-          its URL through the <Link href="/contact">contact form</Link> and
-          we'll remove it. Anything you already shared with a share link, assume
-          has been seen.
+          Interviews taken <em>signed out</em>, before an account was required,
+          are a different matter. They aren't linked to any account, which means
+          we have no way to look at one and tell that it was yours. If you want
+          one deleted, send us its URL through the{" "}
+          <Link href="/contact">contact form</Link> and we'll remove it.
+          Anything you already shared with a share link, assume has been seen.
         </p>
         <p>
           We can't send email — there's no mail provider wired up — so there are

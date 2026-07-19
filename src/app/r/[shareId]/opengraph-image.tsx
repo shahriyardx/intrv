@@ -174,7 +174,7 @@ export default async function Image({
       eyebrow="AI interview practice"
       headline="This result isn't here anymore."
       score={null}
-      stats={[{ label: "Practice anything", value: "no account needed" }]}
+      stats={[{ label: "Practice anything", value: "free to start" }]}
     />
   );
 

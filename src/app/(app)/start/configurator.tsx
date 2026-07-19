@@ -462,7 +462,7 @@ function FormFooter({
           )}
         </Button>
         <p className="text-muted-foreground text-xs">
-          No account needed. Sign up later to keep your history.
+          Free, and every result is kept in your history.
         </p>
       </div>
     </>

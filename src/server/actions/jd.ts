@@ -79,6 +79,8 @@ export async function createJdSession(
     };
   }
 
+  if (viewer.kind !== "user") redirect("/sign-in?next=%2Fstart");
+
   const quota = await checkInterviewQuota(viewer);
   if (!quota.ok) return { ok: false, error: quota.message };
 

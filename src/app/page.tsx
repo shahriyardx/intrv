@@ -128,7 +128,7 @@ export default function Home() {
             </div>
 
             <p className="mt-5 text-muted-foreground text-sm">
-              No account. No card. Nothing to install.
+              Free account. No card. Nothing to install.
             </p>
           </div>
 

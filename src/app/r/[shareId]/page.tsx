@@ -79,7 +79,7 @@ async function SharedResult({ params }: Props) {
       <div className="no-print mt-14 rounded-md border p-6 text-center">
         <p className="font-display text-display-md">Think you'd do better?</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Generate an interview on any topic. No account needed.
+          Generate an interview on any topic. Free to start.
         </p>
         <Button asChild className="mt-5">
           <Link href="/start">Try {session.topic}</Link>
