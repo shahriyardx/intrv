@@ -51,9 +51,9 @@ const FAMILY_HUES: Record<Family, { back: string; front: string }> = {
   breadth: { back: "var(--chart-7)", front: "var(--chart-3)" },
   // amber → orange: what stuck
   retention: { back: "var(--chart-4)", front: "var(--chart-6)" },
-  // green → blue: not a family, a moment. Deliberately outside the five so a
-  // seasonal badge never looks like it belongs to a progression.
-  season: { back: "var(--chart-2)", front: "var(--chart-1)" },
+  // gold → green: the trophy's own colours, and deliberately outside the five
+  // family pairs so a seasonal badge never looks like part of a progression.
+  season: { back: "var(--chart-4)", front: "var(--chart-2)" },
 };
 
 const BADGE_FAMILY: Record<string, Family> = {
@@ -229,12 +229,13 @@ const MARKS: Record<string, { back: string; front: string }> = {
       "M16 6.5 8 9.4v7c0 4.5 3.3 7.9 8 9.4V6.5Zm-2.4 6.8 2.4 2.4 4.8-4.8 2.1 2.1-6.9 6.9-4.5-4.5 2.1-2.1Z",
   },
 
-  // World Cup 2026 — a ball with a trophy behind it. Seasonal badges get an
-  // object about the occasion, not about the app.
+  // World Cup 2026 — the trophy: a globe cradled by two sweeping arms over a
+  // banded plinth. Split across the panes on purpose, with the globe and base
+  // in front, because drawn as one silhouette it reads as a chess pawn.
   "fifa-2026": {
-    back: "M16 3a13 13 0 1 1 0 26 13 13 0 0 1 0-26Z",
+    back: "M13.6 23.4C11.7 18.8 10.6 13.9 10.5 8.4l2.8 4c.8 1.6 1.7 2.6 2.7 3 1-.4 1.9-1.4 2.7-3l2.8-4c-.1 5.5-1.2 10.4-3.1 15h-4.8Z",
     front:
-      "m16 8.4 5.4 3.9-2 6.3h-6.7l-2-6.3L16 8.4Zm0 3.7-2.4 1.7.9 2.8h3l.9-2.8L16 12.1ZM16 3a13 13 0 0 0-9.2 3.8l1.5 4.7 2.4-1.7L16 6.1V3Zm0 0v3.1l5.3 3.7 2.4 1.7 1.5-4.7A13 13 0 0 0 16 3ZM6.2 20.6l-2.9-.5a13 13 0 0 0 6.5 8.2l1.2-2.8-2-6.3-2.8 1.4Zm19.6 0-2.8-1.4-2 6.3 1.2 2.8a13 13 0 0 0 6.5-8.2l-2.9.5Z",
+      "M16 1.9a4.3 4.3 0 1 1 0 8.6 4.3 4.3 0 0 1 0-8.6ZM10.7 23.4h10.6a1 1 0 0 1 1 1v2.1a1 1 0 0 1-1 1H10.7a1 1 0 0 1-1-1v-2.1a1 1 0 0 1 1-1Zm-2.1 4.9h14.8a1 1 0 0 1 1 1v.7H7.6v-.7a1 1 0 0 1 1-1Z",
   },
 
   // Daily habit — the sun coming up again.
