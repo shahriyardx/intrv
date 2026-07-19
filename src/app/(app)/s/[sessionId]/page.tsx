@@ -64,8 +64,6 @@ export default async function SessionPage(props: {
         <SiteNav />
       </SiteHeader>
       <main className={cn(shell, "flex-1 py-10")}>
-        {/* Question prompts are read, not scanned, so they stay at a measure
-            even though the shell around them is wider. */}
         <Measure>
           <div className="mb-8 flex flex-wrap items-center gap-2">
             <DataLabel>{session.topic}</DataLabel>

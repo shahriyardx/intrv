@@ -144,7 +144,7 @@ export type Momentum = {
  * Both derive from the same per-user pull of graded sessions — bounded by one
  * user's history, so this is not the "load the whole table" hazard the public
  * leaderboard guards against. XP reuses DIFFICULTY_MULTIPLIER exported from
- * leaderboard.ts so the two formulas can never drift; SCREEN sessions are
+ * leaderboard.ts so the two formulas can never drift; ASSESSMENT sessions are
  * excluded because a candidate assessment is not the user's own study.
  */
 export async function getMomentum(viewer: Viewer): Promise<Momentum> {
@@ -451,7 +451,7 @@ type TopicRow = {
  * has to be unnested one row per (question, concept) pair, and the score lives
  * on Answer while the tag lives on Question — a join Prisma's groupBy cannot
  * express. userId is a bound parameter; nothing user-typed is concatenated.
- * SCREEN sessions are excluded — an assessment is not the user's own study record.
+ * ASSESSMENT sessions are excluded — a screening is not the user's own study record.
  */
 export async function getMastery(viewer: Viewer): Promise<Mastery> {
   const owner = ownerWhere(viewer);

@@ -18,7 +18,7 @@ import { StartAssessmentForm } from "./start-form";
 
 // An invite is a private capability link, never something to index.
 export const metadata: Metadata = {
-  title: "You're invited to a screening",
+  title: "You're invited to an assessment",
   robots: { index: false, follow: false },
 };
 
@@ -68,13 +68,13 @@ async function Invite({ params }: Props) {
   return (
     <Measure className="space-y-10">
       <div>
-        <DataLabel>{assessment.orgName} · Screening</DataLabel>
+        <DataLabel>{assessment.orgName} · Assessment</DataLabel>
         <h1 className="mt-2 font-display text-display-lg">
           {assessment.title}
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          {assessment.orgName} invited you to take a short screening interview
-          on {assessment.topic}. Answer in one sitting — the timer runs once you
+          {assessment.orgName} invited you to take a short assessment on{" "}
+          {assessment.topic}. Answer in one sitting — the timer runs once you
           start.
         </p>
       </div>

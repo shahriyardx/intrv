@@ -17,7 +17,10 @@ type Props = {
 export function QuestionCard({ question, value, onChange, disabled }: Props) {
   return (
     <div className="space-y-6">
-      <Prose>
+      {/* max-w-none: Prose caps at 68ch, which was right when the runner sat
+          in a reading column. Measure is w-full now, so the options run the
+          shell's width and a capped prompt just looked broken beside them. */}
+      <Prose className="max-w-none">
         <h2 className="font-display text-display-md leading-tight">
           <RichText>{question.prompt}</RichText>
         </h2>

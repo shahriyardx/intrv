@@ -421,7 +421,7 @@ export async function isAssessmentSessionViewableBy(
 }
 
 /**
- * The result-page gate for a SCREEN session: whether the viewer may see the
+ * The result-page gate for an ASSESSMENT session: whether the viewer may see the
  * graded result, and the org name to show them if not. Bundled so the result
  * page needs one call rather than two.
  */

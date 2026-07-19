@@ -390,7 +390,7 @@ export async function startAssessmentSession(
   if (!assessment) {
     return {
       ok: false,
-      error: "This screening link is no longer active. Ask for a fresh one.",
+      error: "This assessment link is no longer active. Ask for a fresh one.",
     };
   }
 

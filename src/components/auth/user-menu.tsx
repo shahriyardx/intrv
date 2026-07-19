@@ -137,7 +137,7 @@ export function UserMenu({
               </Link>
             </DropdownMenuItem>
             {/* Personal accounts only, for the same reason as the surfaces
-                above: an org account's attempts are all mode SCREEN, which
+                above: an org account's attempts are all mode ASSESSMENT, which
                 leaderboard.ts excludes from points — it could never rank. */}
             <DropdownMenuItem asChild>
               <Link href="/leaderboard">

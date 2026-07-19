@@ -81,7 +81,7 @@ export const createSessionSchema = z.object({
 export type CreateSessionInput = z.infer<typeof createSessionSchema>;
 
 /**
- * Focus-loss/paste counters a SCREEN session reports at submit. Client-supplied
+ * Focus-loss/paste counters an ASSESSMENT session reports at submit. Client-supplied
  * and therefore only a signal for the recruiter, never an enforcement input.
  */
 export const integritySchema = z.object({

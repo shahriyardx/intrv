@@ -20,7 +20,7 @@ import {
  *    concept answered cleanly climbs the ladder (1d → 3d → 7d → retired) and a
  *    concept missed again resets and counts a lapse.
  *
- * Anonymous and SCREEN sessions no-op: neither feeds the signed-in user's study
+ * Anonymous and ASSESSMENT sessions no-op: neither feeds the signed-in user's study
  * loop.
  */
 export async function scheduleReviews(sessionId: string): Promise<void> {

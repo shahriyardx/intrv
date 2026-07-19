@@ -150,9 +150,10 @@ exclusive — the two surfaces never overlap.
   `activeOrganizationId` → `/org`. If `signUp` hits "user already exists" on the
   org path it's a stranded retry: sign in with the same creds, then continue to
   org creation (or route to `/org` if they already have one).
-- **Routes are slug-free.** `/org` is the single active-org dashboard; screens
-  live at `/org/screens/new`, `/org/screens/[screenId]`, and
-  `/org/screens/[screenId]/c/[sessionId]`. There is no `/org/[slug]`.
+- **Routes are slug-free.** `/org` is the single active-org dashboard;
+  assessments live at `/org/assessments/new`,
+  `/org/assessments/[assessmentId]`, and
+  `/org/assessments/[assessmentId]/c/[sessionId]`. There is no `/org/[slug]`.
 - **The account gate is per-surface, and `/s/*` is exempt — deliberately.**
   `OrgAccountGate` (a Suspense-sibling redirect to `/org`) is mounted only on
   the personal pages that have an org mirror: `dashboard/layout.tsx`,

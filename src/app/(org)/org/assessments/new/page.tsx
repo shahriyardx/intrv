@@ -26,7 +26,7 @@ export default async function NewScreenPage() {
         / New assessment
       </DataLabel>
       <h2 className="mt-2 font-display text-display-lg">
-        Create a screening interview
+        Create an assessment
       </h2>
       <p className="mt-3 max-w-prose text-muted-foreground text-sm">
         We write the questions once and freeze them, so every candidate answers

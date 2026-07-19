@@ -25,7 +25,7 @@ type Props = {
   expectedCount: number;
   expiresAt: string | null;
   /**
-   * SCREEN sessions only: count focus-loss and paste events and report them at
+   * ASSESSMENT sessions only: count focus-loss and paste events and report them at
    * submit. Regular practice never records this — there is no reader for it.
    */
   trackIntegrity?: boolean;
