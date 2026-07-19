@@ -16,7 +16,7 @@ import {
 } from "@/components/analytics/session-status";
 import { StatTile } from "@/components/analytics/stat-tile";
 import { WeakConcepts } from "@/components/analytics/weak-concepts";
-import { BadgeGrid } from "@/components/game/badge-grid";
+import { BadgeArt } from "@/components/game/badge-art";
 import { DailyGoal } from "@/components/game/daily-goal";
 import { LevelBar } from "@/components/game/level-bar";
 import { Button } from "@/components/ui/button";
@@ -71,6 +71,7 @@ export default async function DashboardPage() {
   }
 
   const gradedNone = stats.gradedSessions === 0;
+  const earnedBadges = progression.badges.filter((badge) => badge.earned);
 
   return (
     <div className="space-y-14">
@@ -88,16 +89,35 @@ export default async function DashboardPage() {
         <div className="space-y-3">
           <div className="flex items-baseline justify-between gap-4">
             <DataLabel as="h2">Badges</DataLabel>
-            <span className="font-mono text-muted-foreground text-xs tabular">
+            <Link
+              href="/dashboard/badges"
+              className="font-mono text-muted-foreground text-xs tabular underline underline-offset-4 hover:text-foreground"
+            >
               {progression.earned} / {progression.total}
-            </span>
+            </Link>
           </div>
-          {/* Six is the closest useful cut: earned first, then whatever is
-              nearest. Two columns, because this sits in the narrow half. */}
-          <BadgeGrid
-            badges={progression.badges.slice(0, 6)}
-            className="lg:grid-cols-2"
-          />
+          {/* Earned only, and bare — no names, no descriptions, no locked
+              placeholders. This is a shelf of what you have; /dashboard/badges
+              is where the list of what each one takes belongs. Greeting someone
+              with fourteen grey rectangles they have not earned is not a
+              welcome. */}
+          {earnedBadges.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {earnedBadges.map((badge) => (
+                <BadgeArt
+                  key={badge.id}
+                  id={badge.id}
+                  earned
+                  className="size-10"
+                  title={badge.name}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              None yet — the first one lands the moment an interview is graded.
+            </p>
+          )}
         </div>
       </section>
 

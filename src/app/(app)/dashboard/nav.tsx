@@ -14,6 +14,7 @@ const LINKS: { segment: string | null; href: Route; label: string }[] = [
   { segment: null, href: "/dashboard", label: "Overview" },
   { segment: "review", href: "/dashboard/review", label: "Review" },
   { segment: "plan", href: "/dashboard/plan", label: "Plan" },
+  { segment: "badges", href: "/dashboard/badges", label: "Badges" },
   { segment: "history", href: "/dashboard/history", label: "History" },
   { segment: "mistakes", href: "/dashboard/mistakes", label: "Mistakes" },
   { segment: "analytics", href: "/dashboard/analytics", label: "Analytics" },

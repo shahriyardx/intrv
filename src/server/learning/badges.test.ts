@@ -27,7 +27,17 @@ describe("evaluateBadges", () => {
   it("earns nothing on a brand-new account", () => {
     const badges = evaluateBadges(EMPTY);
     expect(earnedCount(badges)).toBe(0);
-    expect(badges.every((b) => b.percent === 0)).toBe(true);
+  });
+
+  // Not every counter starts at zero — a new account is already level 1, so
+  // the level badges show real progress before anything has been done. What
+  // must hold is that none of them are *earned*.
+  it("never shows full progress on a counter that has not been met", () => {
+    const badges = evaluateBadges(EMPTY);
+    for (const badge of badges) {
+      expect(badge.percent).toBeLessThan(100);
+      expect(badge.earned).toBe(false);
+    }
   });
 
   it("earns on the threshold, not one past it", () => {

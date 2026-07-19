@@ -60,6 +60,14 @@ const BADGE_FAMILY: Record<string, Family> = {
   explorer: "breadth",
   "deep-end": "breadth",
   retained: "retention",
+  "hundred-runs": "volume",
+  "level-5": "volume",
+  "level-15": "volume",
+  "streak-14": "habit",
+  "daily-30": "habit",
+  "perfect-10": "precision",
+  "topics-15": "breadth",
+  "expert-20": "breadth",
 };
 
 /** Opacity of each pane. Low enough that the overlap is visibly a third tone. */
@@ -154,6 +162,62 @@ const MARKS: Record<string, { back: string; front: string }> = {
       "M15 22V13.5c-4.4 0-8-3.4-8-7.6 4.4 0 8 3.4 8 7.6V13c0-4 3.2-7.3 7.2-7.3.7 0 1.4.1 2 .3-.5 4.4-4.3 7.8-8.9 7.8h-.3V22h-3Z",
   },
 
+  // A hundred runs — a trophy. The summit was fifty; this is what you get for
+  // keeping going after it.
+  "hundred-runs": {
+    back: "M9 3h14v10a7 7 0 0 1-14 0V3Z",
+    front:
+      "M14 19h4v5h-4v-5Zm-5 6h14a1.5 1.5 0 0 1 0 3H9a1.5 1.5 0 0 1 0-3ZM7 4H3.5A1.5 1.5 0 0 0 2 5.5v2A6.5 6.5 0 0 0 8.5 14H9v-3h-.5A3.5 3.5 0 0 1 5 7.5V7h2V4Zm18 0h3.5A1.5 1.5 0 0 1 30 5.5v2A6.5 6.5 0 0 1 23.5 14H23v-3h.5A3.5 3.5 0 0 0 27 7.5V7h-2V4Z",
+  },
+
+  // Level five — rank chevrons. The one mark that is a symbol rather than an
+  // object, because a level is not a thing you can hold.
+  "level-5": {
+    back: "M16 17 6 26h20l-10-9Z",
+    front: "M16 6 4 17h5.5L16 11.2 22.5 17H28L16 6Z",
+  },
+
+  // Level fifteen — the same chevrons, doubled and topped with a star.
+  "level-15": {
+    back: "M16 20 6 29h20l-10-9Zm0-7L6 22h20l-10-9Z",
+    front:
+      "M16 1l2.9 6 6.5.9-4.7 4.6 1.1 6.5-5.8-3.1-5.8 3.1 1.1-6.5L6.6 7.9 13.1 7 16 1Z",
+  },
+
+  // Two weeks — a torch. The campfire stayed put; this one you carry.
+  "streak-14": {
+    back: "M16 2c4.6 3.8 7.2 7.4 7.2 11.4a7.2 7.2 0 0 1-14.4 0C8.8 10.4 10.2 8 12.6 5.8c.7 1.9 1.5 3 2.7 3.6C14.7 6.2 15.2 4.1 16 2Z",
+    front:
+      "M12.4 20h7.2l-1.1 9.2a1 1 0 0 1-1 .8h-3a1 1 0 0 1-1-.8L12.4 20Zm3.6-5.4c1.8 1.9 2.7 3.4 2.7 4.8a2.7 2.7 0 1 1-5.4 0c0-1.4.9-2.9 2.7-4.8Z",
+  },
+
+  // Thirty dailies — an alarm clock, because a daily is a thing you show up for.
+  "daily-30": {
+    back: "M16 6a11 11 0 1 1 0 22 11 11 0 0 1 0-22Z",
+    front:
+      "M15 10h2v7.6l4.4 2.6-1 1.7-5.4-3.2V10ZM5.8 2.4l3.4 2.4-2 2.9-3.4-2.4a1.8 1.8 0 0 1 2-2.9Zm20.4 0a1.8 1.8 0 0 1 2 2.9l-3.4 2.4-2-2.9 3.4-2.4ZM8.6 27.4l-2.4 2.8a1.6 1.6 0 0 1-2.4-2.1l2.4-2.8 2.4 2.1Zm14.8 0 2.4-2.1 2.4 2.8a1.6 1.6 0 0 1-2.4 2.1l-2.4-2.8Z",
+  },
+
+  // Ten perfect — a cut gem. Flawless, and it took a while.
+  "perfect-10": {
+    back: "M8 4h16l6 8-14 17L2 12l6-8Z",
+    front: "M8 4h16l6 8H2l6-8Zm-6 8h28L16 29 2 12Zm14-8-4 8 4 17 4-17-4-8Z",
+  },
+
+  // Fifteen topics — a globe. Breadth, literally.
+  "topics-15": {
+    back: "M16 2a14 14 0 1 1 0 28 14 14 0 0 1 0-28Z",
+    front:
+      "M2.6 12h26.8v3H2.6v-3Zm0 8h26.8v3H2.6v-3ZM16 2c3.9 0 7 6.3 7 14s-3.1 14-7 14-7-6.3-7-14S12.1 2 16 2Zm0 3c-2.2 0-4 4.9-4 11s1.8 11 4 11 4-4.9 4-11-1.8-11-4-11Z",
+  },
+
+  // Twenty at hard or expert — a shield. You went where it was defended.
+  "expert-20": {
+    back: "M16 2 4 6.5v10c0 6.6 5 11.6 12 13.5 7-1.9 12-6.9 12-13.5v-10L16 2Z",
+    front:
+      "M16 6.5 8 9.4v7c0 4.5 3.3 7.9 8 9.4V6.5Zm-2.4 6.8 2.4 2.4 4.8-4.8 2.1 2.1-6.9 6.9-4.5-4.5 2.1-2.1Z",
+  },
+
   // Daily habit — the sun coming up again.
   "daily-10": {
     back: "M16 6a10 10 0 0 1 10 10H6A10 10 0 0 1 16 6Z",
@@ -172,12 +236,20 @@ export function BadgeArt({
   id,
   earned,
   className,
+  title,
 }: {
   id: string;
   /** Accepted so callers need not know tier is undrawn; see the note above. */
   tier?: BadgeTier;
   earned: boolean;
   className?: string;
+  /**
+   * The badge's name. Supply it wherever the mark stands alone — the overview
+   * shelf, the header — where it becomes both the hover label and the only
+   * thing a screen reader has to go on. Omit it beside a visible name, where
+   * announcing it again is noise.
+   */
+  title?: string;
 }) {
   const hues = FAMILY_HUES[BADGE_FAMILY[id] ?? "volume"];
   const mark = MARKS[id] ?? FALLBACK;
@@ -188,13 +260,14 @@ export function BadgeArt({
   const front = earned ? hues.front : "var(--muted-foreground)";
 
   return (
-    // biome-ignore lint/a11y/noSvgWithoutTitle: aria-hidden; the badge name sits beside it in text
     <svg
       viewBox="0 0 32 32"
       className={cn("size-9 shrink-0", !earned && "opacity-45", className)}
-      aria-hidden
+      role={title ? "img" : undefined}
+      aria-hidden={title ? undefined : true}
       focusable="false"
     >
+      {title ? <title>{title}</title> : null}
       <path d={mark.back} fill={back} fillOpacity={BACK_ALPHA} />
       <path
         d={mark.front}
