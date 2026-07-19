@@ -37,7 +37,6 @@ export async function getSharedSession(
       shareId: true,
       error: true,
       mode: true,
-      adaptive: true,
       rematchOfId: true,
       // Only the fields the privacy test below needs — never enough to identify
       // an anonymous taker.
@@ -74,7 +73,6 @@ export async function getSharedSession(
     shareId: session.shareId,
     error: session.error,
     mode: session.mode,
-    adaptive: session.adaptive,
     rematchOfId: session.rematchOfId,
     // Graded, so the answers are already public knowledge to the taker.
     questions: session.questions.map((q) => toClientQuestion(q, true)),

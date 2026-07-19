@@ -64,7 +64,7 @@ describe("toClientQuestion", () => {
     const withRung = { ...mcqRow, difficulty: "HARD" as const };
     expect(toClientQuestion(withRung, false).difficulty).toBe("HARD");
     expect(toClientQuestion(withRung, true).difficulty).toBe("HARD");
-    // Absent (non-adaptive question) reads as null, never undefined.
+    // Absent reads as null, never undefined.
     expect(toClientQuestion(mcqRow, false).difficulty).toBeNull();
   });
 

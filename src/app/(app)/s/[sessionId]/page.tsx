@@ -84,7 +84,6 @@ export default async function SessionPage(props: {
                 session.expiresAt ? session.expiresAt.toISOString() : null
               }
               trackIntegrity={session.mode === "ASSESSMENT"}
-              adaptive={session.adaptive}
             />
           </Suspense>
         </Measure>

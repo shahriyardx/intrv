@@ -295,7 +295,6 @@ export async function getCandidateDetail(
       shareId: true,
       error: true,
       mode: true,
-      adaptive: true,
       rematchOfId: true,
       candidateName: true,
       candidateEmail: true,
@@ -338,7 +337,6 @@ export async function getCandidateDetail(
     shareId: session.shareId,
     error: session.error,
     mode: session.mode,
-    adaptive: session.adaptive,
     rematchOfId: session.rematchOfId,
     questions: session.questions.map((q) => toClientQuestion(q, revealAnswers)),
   };

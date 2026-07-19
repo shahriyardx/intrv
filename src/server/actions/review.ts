@@ -69,7 +69,6 @@ export async function startReviewSession(): Promise<ReviewActionError | never> {
       difficulty,
       // A handful of concepts doesn't need a full-length set.
       questionCount: items.length <= 4 ? 5 : 10,
-      adaptive: false,
       status: "GENERATING",
       brief: buildReviewBrief(items),
     },
@@ -104,7 +103,6 @@ export async function startPlannedSession(
       topic: parsedTopic.data,
       difficulty: parsedDifficulty.data,
       questionCount: 10,
-      adaptive: false,
       timeLimitMs: null,
       status: "GENERATING",
     },

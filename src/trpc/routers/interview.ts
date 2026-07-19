@@ -1,9 +1,8 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import type { AnswerKey, AnswerResponse, Difficulty } from "@/lib/schemas";
+import type { Difficulty } from "@/lib/schemas";
 import { questionTypeSchema } from "@/lib/schemas";
-import { LADDER, nextRung } from "@/server/ai/adaptive";
 import { AiError } from "@/server/ai/client";
 import { generateQuestionsStream } from "@/server/ai/generate";
 import {
@@ -13,7 +12,6 @@ import {
 } from "@/server/dal/dto";
 import { getAccessibleSession } from "@/server/dal/interview";
 import { canAccessSession, type Viewer } from "@/server/dal/owner";
-import { gradeLocally } from "@/server/grading/local";
 import { createTRPCRouter, publicProcedure } from "@/trpc/init";
 
 /** The tRPC context carries the viewer's identity; rebuild it in the same shape. */
@@ -31,27 +29,6 @@ function viewerFrom(ctx: {
     };
   }
   return { kind: "anonymous" };
-}
-
-/** Questions per adaptive round — one rung's worth before the ladder can move. */
-const ADAPTIVE_BATCH = 3;
-
-/** How long to wait for a batch's answers before proceeding at the same rung. */
-const ANSWER_WAIT_CAP_MS = 15 * 60 * 1000;
-const ANSWER_POLL_MS = 2_500;
-
-/** A cancellable delay that also resolves the moment the request is aborted. */
-function delay(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve) => {
-    if (signal?.aborted) return resolve();
-    const timer = setTimeout(finish, ms);
-    function finish() {
-      clearTimeout(timer);
-      signal?.removeEventListener("abort", finish);
-      resolve();
-    }
-    signal?.addEventListener("abort", finish);
-  });
 }
 
 type GenSession = {
@@ -85,9 +62,8 @@ async function discardFailedSession(
 }
 
 /**
- * Non-adaptive generation: everything at the session difficulty, streamed and
- * persisted as it lands, the clock started once the whole set exists. This is
- * the original flow, factored out untouched.
+ * Generation: everything at the session difficulty, streamed and persisted as
+ * it lands, the clock started once the whole set exists.
  */
 async function* streamStandard(
   session: GenSession,
@@ -144,162 +120,6 @@ async function* streamStandard(
   });
 }
 
-/**
- * Adaptive generation: one rung-sized batch at a time. Between batches it waits
- * for the batch's objective answers, grades them server-side against the stored
- * key (nothing leaks — the key never leaves the server), and steps the rung
- * from that signal before writing the next batch.
- */
-async function* streamAdaptive(
-  session: GenSession,
-  types: ClientQuestion["type"][],
-  signal: AbortSignal | undefined,
-): AsyncGenerator<ClientQuestion> {
-  let rung: Difficulty = LADDER.includes(session.difficulty)
-    ? session.difficulty
-    : "MEDIUM";
-  let index = 0;
-  let clockStarted = false;
-  const priorPrompts: string[] = [];
-
-  while (index < session.questionCount) {
-    if (signal?.aborted) return;
-
-    const want = Math.min(ADAPTIVE_BATCH, session.questionCount - index);
-    const isLastBatch = index + want >= session.questionCount;
-
-    // Objective questions (MCQ/TRUE_FALSE) in this batch, kept with their keys
-    // so the wait can grade them locally once answers arrive.
-    const objective: { id: string; key: AnswerKey }[] = [];
-    let yielded = 0;
-
-    for await (const generated of generateQuestionsStream({
-      topic: session.topic,
-      difficulty: rung,
-      types,
-      count: want,
-      brief: session.brief ?? undefined,
-      avoidSeed: priorPrompts,
-      sessionId: session.id,
-      signal,
-    })) {
-      const saved = await prisma.question.create({
-        data: {
-          sessionId: session.id,
-          index,
-          type: generated.type,
-          prompt: generated.prompt,
-          choices: generated.choices ?? undefined,
-          answerKey: generated.answerKey,
-          explanation: generated.explanation || null,
-          concepts: generated.concepts,
-          // The rung is the whole point of an adaptive session — persist it so
-          // the result page can calibrate.
-          difficulty: rung,
-        },
-        select: clientQuestionSelect,
-      });
-
-      priorPrompts.push(generated.prompt);
-      if (generated.type === "MCQ" || generated.type === "TRUE_FALSE") {
-        objective.push({ id: saved.id, key: generated.answerKey });
-      }
-
-      index++;
-      yielded++;
-      yield toClientQuestion(saved, false);
-
-      // The clock must start when the first questions become answerable, not
-      // after the whole (paced) set exists — otherwise a timed adaptive session
-      // never starts ticking while it waits for answers.
-      if (!clockStarted) {
-        clockStarted = true;
-        const now = new Date();
-        await prisma.interviewSession.update({
-          where: { id: session.id },
-          data: {
-            startedAt: now,
-            expiresAt: session.timeLimitMs
-              ? new Date(now.getTime() + session.timeLimitMs)
-              : null,
-          },
-        });
-      }
-    }
-
-    // A batch that produced nothing new means the topic is exhausted; stepping
-    // and waiting would both be pointless.
-    if (yielded === 0) break;
-    if (isLastBatch) break;
-
-    rung = await waitAndStep(rung, objective, signal);
-    if (signal?.aborted) return;
-  }
-
-  if (index === 0) {
-    throw new AiError(
-      "No questions could be generated",
-      "invalid_output",
-      false,
-    );
-  }
-
-  // The target may have fallen short if the topic ran dry; record what exists.
-  if (index !== session.questionCount) {
-    await prisma.interviewSession.update({
-      where: { id: session.id },
-      data: { questionCount: index },
-    });
-  }
-}
-
-/**
- * Waits for a batch's objective questions to be answered (polling, capped, and
- * abortable), then returns the next rung from how they were graded. Times out
- * to the same rung so a student who walks away is not stuck forever.
- */
-async function waitAndStep(
-  current: Difficulty,
-  objective: { id: string; key: AnswerKey }[],
-  signal: AbortSignal | undefined,
-): Promise<Difficulty> {
-  if (objective.length === 0) return current;
-
-  const ids = objective.map((o) => o.id);
-  const deadline = Date.now() + ANSWER_WAIT_CAP_MS;
-
-  while (Date.now() < deadline) {
-    if (signal?.aborted) return current;
-    const answered = await prisma.answer.count({
-      where: { questionId: { in: ids } },
-    });
-    if (answered >= ids.length) break;
-    await delay(ANSWER_POLL_MS, signal);
-  }
-
-  if (signal?.aborted) return current;
-
-  const answers = await prisma.answer.findMany({
-    where: { questionId: { in: ids } },
-    select: { questionId: true, response: true },
-  });
-  const responseById = new Map(
-    answers.map((a) => [a.questionId, a.response as AnswerResponse | null]),
-  );
-
-  let correct = 0;
-  let total = 0;
-  for (const { id, key } of objective) {
-    if (!responseById.has(id)) continue;
-    const graded = gradeLocally(key, responseById.get(id) ?? null);
-    if (!graded) continue;
-    total++;
-    if (graded.isCorrect) correct++;
-  }
-
-  return nextRung(current, { correct, total });
-}
-
 export const interviewRouter = createTRPCRouter({
   get: publicProcedure
     .input(z.object({ sessionId: z.string().uuid() }))
@@ -340,7 +160,6 @@ export const interviewRouter = createTRPCRouter({
           timeLimitMs: true,
           status: true,
           mode: true,
-          adaptive: true,
           brief: true,
         },
       });
@@ -393,11 +212,7 @@ export const interviewRouter = createTRPCRouter({
       };
 
       try {
-        if (session.adaptive) {
-          yield* streamAdaptive(gen, input.types, signal);
-        } else {
-          yield* streamStandard(gen, input.types, signal);
-        }
+        yield* streamStandard(gen, input.types, signal);
       } catch (error) {
         await discardFailedSession(session.id, error);
         throw new TRPCError({

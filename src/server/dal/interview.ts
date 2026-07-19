@@ -34,7 +34,6 @@ export type SessionSummary = {
     | "REVIEW"
     | "REMATCH"
     | "ASSESSMENT";
-  adaptive: boolean;
   rematchOfId: string | null;
 };
 
@@ -65,7 +64,6 @@ const sessionSelect = {
   shareId: true,
   error: true,
   mode: true,
-  adaptive: true,
   rematchOfId: true,
 } as const;
 
@@ -109,7 +107,6 @@ export async function getAccessibleSession(
     shareId: session.shareId,
     error: session.error,
     mode: session.mode,
-    adaptive: session.adaptive,
     rematchOfId: session.rematchOfId,
     questions: session.questions.map((q) => toClientQuestion(q, revealAnswers)),
     owned:

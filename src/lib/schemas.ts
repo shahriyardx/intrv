@@ -76,9 +76,6 @@ export const createSessionSchema = z.object({
     .max(3),
   /** Null means untimed. */
   timeLimitMinutes: z.number().int().min(1).max(180).nullable(),
-  /** Adaptive sessions treat `difficulty` as the starting rung and step it
-   *  per batch from answer signal. */
-  adaptive: z.boolean().default(false),
 });
 
 export type CreateSessionInput = z.infer<typeof createSessionSchema>;

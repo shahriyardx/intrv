@@ -29,13 +29,6 @@ type Props = {
    * submit. Regular practice never records this — there is no reader for it.
    */
   trackIntegrity?: boolean;
-  /**
-   * Adaptive sessions deliver questions in rung-sized batches and pause to grade
-   * the last batch before writing the next. The user reaches the final arrived
-   * question while more are legitimately locked, so the wait needs explaining as
-   * "answer to unlock" rather than "the model is slow".
-   */
-  adaptive?: boolean;
 };
 
 export function Runner({
@@ -44,7 +37,6 @@ export function Runner({
   expectedCount,
   expiresAt,
   trackIntegrity = false,
-  adaptive = false,
 }: Props) {
   const trpc = useTRPC();
 
@@ -61,11 +53,11 @@ export function Runner({
     ),
   );
 
-  // A live session has no expiresAt at page-load: streamStandard/streamAdaptive
-  // set it once generation has started, deliberately, so the clock doesn't tick
-  // while questions are still being written. The prop is therefore null for
-  // those, and the timer would never appear. Once the stream has produced
-  // something, re-read the session to pick up the deadline the server just set.
+  // A live session has no expiresAt at page-load: streamStandard sets it once
+  // generation has finished, deliberately, so the clock doesn't tick while
+  // questions are still being written. The prop is therefore null for those,
+  // and the timer would never appear. Once the stream has produced something,
+  // re-read the session to pick up the deadline the server just set.
   // Pre-seeded sessions (DAILY/ASSESSMENT) already carry it in the prop, so this
   // query stays disabled for them.
   const hasStarted = (data?.length ?? 0) > 0;
@@ -73,9 +65,9 @@ export function Runner({
     trpc.interview.get.queryOptions(
       { sessionId },
       {
-        // streamStandard writes expiresAt only after the last question, while
-        // streamAdaptive writes it at the first batch — so poll from the moment
-        // anything arrives and stop the instant a deadline shows up.
+        // streamStandard writes expiresAt only after the last question, so
+        // poll from the moment anything arrives and stop the instant a
+        // deadline shows up.
         enabled: expiresAt === null && hasStarted,
         refetchInterval: (query) =>
           query.state.data?.expiresAt ? false : 2000,
@@ -225,9 +217,7 @@ export function Runner({
             {!allArrived ? (
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <SpinnerGapIcon className="size-3 animate-spin" />
-                {adaptive
-                  ? "adapting to your level"
-                  : `writing ${questions.length}/${expectedCount}`}
+                writing {questions.length}/{expectedCount}
               </span>
             ) : null}
             {deadline ? (
@@ -246,13 +236,6 @@ export function Runner({
           disabled={submitting}
         />
       </div>
-
-      {adaptive && !allArrived && current === questions.length - 1 ? (
-        <p className="rounded-md border border-dashed px-3 py-2 text-center text-xs text-muted-foreground">
-          Answer these to unlock the next questions — difficulty adapts to how
-          you're doing.
-        </p>
-      ) : null}
 
       <div className="flex items-center justify-between gap-4 border-t pt-6">
         <Button

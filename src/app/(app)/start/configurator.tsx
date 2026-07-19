@@ -109,7 +109,6 @@ const sharedShape = {
     .min(1, "Choose at least one question type."),
   questionCount: z.string(),
   timeLimitMinutes: z.string(),
-  adaptive: z.boolean(),
 };
 
 const topicFormSchema = z.object({
@@ -127,7 +126,6 @@ const SHARED_DEFAULTS = {
   types: [...QUESTION_TYPES],
   questionCount: "10",
   timeLimitMinutes: "",
-  adaptive: false,
 };
 
 /**
@@ -169,7 +167,7 @@ function TopicForm() {
   // A stable ref, not the submit event's currentTarget: react-hook-form awaits
   // async validation before calling this, by which point React has nulled the
   // event's currentTarget. The ref reads live values (registered inputs,
-  // checkboxes as arrays, adaptive as "on") exactly like a native submit.
+  // checkboxes as arrays) exactly like a native submit.
   const formRef = useRef<HTMLFormElement>(null);
 
   const topic = form.watch("topic");
@@ -258,12 +256,6 @@ function TopicForm() {
                 </label>
               ))}
             </div>
-            {/* Not another rung on the ladder — a different contract, so it reads
-                as a switch under the ladder rather than a sixth option. */}
-            <AdaptiveToggle
-              className="mt-3"
-              hint="Starts at the difficulty you picked, then steps up or down as you answer. Ends with a calibrated level, not just a score."
-            />
           </Field>
 
           <div className="space-y-10">
@@ -346,8 +338,6 @@ function JdForm() {
           <CountField />
           <TimeField />
         </div>
-
-        <AdaptiveToggle hint="Starts at the role's seniority, then steps up or down as you answer. Ends with a calibrated level, not just a score." />
 
         <FormFooter
           serverError={serverError}
@@ -440,31 +430,6 @@ function TimeField() {
         ))}
       </div>
     </Field>
-  );
-}
-
-function AdaptiveToggle({
-  hint,
-  className,
-}: {
-  hint: string;
-  className?: string;
-}) {
-  const { register } = useFormContext();
-  return (
-    <label className={cn("block cursor-pointer", className)}>
-      <input
-        type="checkbox"
-        className="peer sr-only"
-        {...register("adaptive")}
-      />
-      <div className="rounded-md border border-dashed px-3 py-2 transition-colors peer-checked:border-foreground peer-checked:border-solid peer-checked:bg-secondary peer-focus-visible:ring-2 peer-focus-visible:ring-ring">
-        <span className="text-sm">Adaptive</span>
-        <span className="mt-0.5 block text-muted-foreground text-xs">
-          {hint}
-        </span>
-      </div>
-    </label>
   );
 }
 

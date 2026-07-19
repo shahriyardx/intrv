@@ -39,7 +39,6 @@ export async function createInterviewSession(
     timeLimitMinutes: formData.get("timeLimitMinutes")
       ? Number(formData.get("timeLimitMinutes"))
       : null,
-    adaptive: formData.get("adaptive") === "on",
   };
 
   const parsed = createSessionSchema.safeParse(raw);
@@ -63,7 +62,6 @@ export async function createInterviewSession(
       timeLimitMs: parsed.data.timeLimitMinutes
         ? parsed.data.timeLimitMinutes * 60_000
         : null,
-      adaptive: parsed.data.adaptive,
       status: "GENERATING",
     },
     select: { id: true },

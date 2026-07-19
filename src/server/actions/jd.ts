@@ -26,7 +26,6 @@ const jdFormSchema = z.object({
     .min(1, "Choose at least one question type.")
     .max(3),
   timeLimitMinutes: z.number().int().min(1).max(180).nullable(),
-  adaptive: z.boolean(),
 });
 
 /**
@@ -56,7 +55,6 @@ export async function createJdSession(
     timeLimitMinutes: formData.get("timeLimitMinutes")
       ? Number(formData.get("timeLimitMinutes"))
       : null,
-    adaptive: formData.get("adaptive") === "on",
   });
   if (!fields.success) {
     return {
@@ -91,7 +89,6 @@ export async function createJdSession(
       timeLimitMs: fields.data.timeLimitMinutes
         ? fields.data.timeLimitMinutes * 60_000
         : null,
-      adaptive: fields.data.adaptive,
       mode: "JOB_DESCRIPTION",
       // Threaded into generation by the existing session.brief → generate path.
       brief: buildBrief(profile),

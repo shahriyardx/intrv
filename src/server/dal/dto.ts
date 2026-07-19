@@ -23,10 +23,11 @@ export type ClientQuestion = {
   prompt: string;
   choices: Choice[] | null;
   /**
-   * The rung this question was generated at on an adaptive session, or null when
-   * it inherits the session difficulty. Not a secret — it says nothing about the
-   * answer — so it is sent regardless of grading, and it drives the result
-   * page's calibration line.
+   * The rung this question was generated at, or null when it inherits the
+   * session difficulty — which is now always, since the adaptive feature that
+   * set it was removed. Kept because the column is kept (see schema.prisma):
+   * questions from past adaptive sessions still carry a rung. Not a secret —
+   * it says nothing about the answer — so it is sent regardless of grading.
    */
   difficulty: Difficulty | null;
   /** Present only once graded. */

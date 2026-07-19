@@ -199,8 +199,9 @@ model InterviewSession {
   error       String?
 
   mode        SessionMode   @default(CUSTOM)
-  /// Adaptive sessions step per-batch difficulty from answer signal; the
-  /// session-level `difficulty` is then just the starting rung.
+  /// Vestigial: the adaptive-difficulty feature was removed. Nothing reads or
+  /// writes this — it is kept only so historical rows survive, and every new
+  /// session takes the `false` default. Safe to drop in a later migration.
   adaptive    Boolean       @default(false)
   /// Extra focus text fed to the generator: the extracted JD profile
   /// (JOB_DESCRIPTION) or the due-concept list (REVIEW). Always our own
@@ -253,8 +254,9 @@ model Question {
   explanation String?
   /// Concept tags driving the weakness rollup in analytics.
   concepts    String[]
-  /// Set on adaptive sessions, where each batch can sit on a different rung.
-  /// Null means "the session's difficulty".
+  /// Vestigial: only adaptive sessions ever set a per-question rung, and that
+  /// feature was removed. Null on every new question; retained so the rungs
+  /// recorded on past adaptive sessions are not destroyed.
   difficulty  Difficulty?
 
   session InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
