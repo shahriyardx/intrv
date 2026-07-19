@@ -5,6 +5,7 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { RetireButton } from "@/components/analytics/retire-button";
 import { ReviewNowButton } from "@/components/analytics/review-now-button";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -49,7 +50,17 @@ export default async function ReviewPage() {
               {queue.dueCount}
             </p>
           </div>
-          {queue.dueCount > 0 ? <ReviewNowButton /> : null}
+          <div className="flex items-center gap-2">
+            {queue.dueCount > 0 ? <ReviewNowButton /> : null}
+            {queue.dueCount + queue.upcoming.length > 0 ? (
+              <RetireButton
+                all
+                variant="outline"
+                label="Clear queue"
+                confirmLabel="Clear everything?"
+              />
+            ) : null}
+          </div>
         </div>
 
         {queue.due.length > 0 ? (
@@ -115,6 +126,7 @@ function ReviewList({
               {formatDistanceToNow(item.dueAt, { addSuffix: true })}
             </span>
           ) : null}
+          <RetireButton itemId={item.id} label="I've got this" />
         </li>
       ))}
     </ul>

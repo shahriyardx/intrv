@@ -227,6 +227,44 @@ export async function getActivityCalendar(
   return buildActivityCalendar(counts, todayIndex, CALENDAR_WEEKS);
 }
 
+/**
+ * Which concepts the viewer is tracking, and which they have finished with.
+ *
+ * The mistakes page needs all three states, not two. A concept with **no**
+ * ReviewItem is not "done" — scheduleReviews only ever creates items for real
+ * misses (unanswered, wrong, or scored under 60), so a partly-right answer can
+ * appear in the mistakes list having never been scheduled. Folding those away
+ * as finished would hide work nobody dismissed.
+ *
+ *   active  → still in the queue
+ *   retired → mastered on the ladder, or dismissed with "I've got this"
+ *   neither → never tracked; leave it alone
+ */
+export async function getReviewConceptState(
+  viewer: Viewer,
+): Promise<{ active: Set<string>; retired: Set<string> }> {
+  const owner = ownerWhere(viewer);
+  if (!owner) return { active: new Set(), retired: new Set() };
+
+  const rows = await prisma.reviewItem.findMany({
+    where: { userId: owner.userId },
+    select: { concept: true, retired: true },
+  });
+
+  const active = new Set<string>();
+  const retired = new Set<string>();
+  for (const row of rows) {
+    (row.retired ? retired : active).add(row.concept);
+  }
+
+  // An item that lapsed back into the queue is active again, and active always
+  // wins: the same concept can hold one row per (userId, topic, concept), so
+  // two topics can disagree about whether it is finished.
+  for (const concept of active) retired.delete(concept);
+
+  return { active, retired };
+}
+
 // ---------------------------------------------------------------------------
 // Progression: level + badges
 // ---------------------------------------------------------------------------

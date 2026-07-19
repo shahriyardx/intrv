@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import {
@@ -139,4 +140,59 @@ function buildReviewBrief(items: { concept: string; topic: string }[]): string {
     brief = next;
   }
   return `${brief}…`;
+}
+
+/**
+ * Retire review items — the "I've got this" gesture.
+ *
+ * Retiring is the single thing that means *done*: it takes the concept out of
+ * the queue, and the mistakes page folds concepts with no active item. There is
+ * no separate dismissal record, so the two surfaces cannot disagree about what
+ * you have finished with.
+ *
+ * Nothing is deleted. `retired: true` is the same terminal state a concept
+ * reaches by climbing the 1d → 3d → 7d ladder, so a manually retired concept is
+ * indistinguishable from an earned one — including to `capActiveItems`, which
+ * already treats retired items as out of the way. A re-miss on a later
+ * interview resets it and it comes back, exactly as if it had graduated: this
+ * says "not now", never "never again".
+ *
+ * Scoped by userId in the `where` rather than by a prior ownership read: a
+ * mismatched id updates zero rows instead of someone else's queue, and the
+ * count we return tells the truth either way.
+ */
+export async function retireReviewItems(input: {
+  /** Retire one item by id. */
+  itemId?: string;
+  /** Retire every active item for one concept. */
+  concept?: string;
+  /** Retire the viewer's whole active queue. */
+  all?: boolean;
+}): Promise<{ ok: true; retired: number } | ReviewActionError> {
+  const viewer = await getViewer();
+  if (viewer.kind !== "user") {
+    return { ok: false, error: "Sign in to manage your review queue." };
+  }
+
+  const scope = input.all
+    ? {}
+    : input.itemId
+      ? { id: input.itemId }
+      : input.concept
+        ? { concept: input.concept }
+        : null;
+
+  // No scope at all would retire everything — refuse rather than guess.
+  if (!scope) return { ok: false, error: "Nothing selected." };
+
+  const { count } = await prisma.reviewItem.updateMany({
+    where: { ...scope, userId: viewer.userId, retired: false },
+    data: { retired: true },
+  });
+
+  revalidatePath("/dashboard/review");
+  revalidatePath("/dashboard/mistakes");
+  revalidatePath("/dashboard");
+
+  return { ok: true, retired: count };
 }
