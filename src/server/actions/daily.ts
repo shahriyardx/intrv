@@ -8,6 +8,7 @@ import {
   DAILY_TIME_LIMIT_MS,
   getOrCreateDailyChallenge,
 } from "@/server/dal/daily";
+import { checkInterviewQuota } from "@/server/dal/limits";
 import { getViewer } from "@/server/dal/session";
 
 export type ActionError = { ok: false; error: string };
@@ -59,6 +60,9 @@ export async function startDailyChallenge(
   }
 
   const now = new Date();
+
+  const quota = await checkInterviewQuota(viewer);
+  if (!quota.ok) return { ok: false, error: quota.message };
 
   const session = await prisma.interviewSession.create({
     data: {

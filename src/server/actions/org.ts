@@ -17,6 +17,10 @@ import {
 import { slugify } from "@/lib/slug";
 import { AiError } from "@/server/ai/client";
 import { generateQuestions } from "@/server/ai/generate";
+import {
+  checkAssessmentQuota,
+  checkParticipantQuota,
+} from "@/server/dal/limits";
 import { getAuthSession, getViewer } from "@/server/dal/session";
 
 export type ActionError = { ok: false; error: string };
@@ -185,6 +189,9 @@ export async function createAssessment(
       error: "You don't have permission to create assessments here.",
     };
   }
+
+  const quota = await checkAssessmentQuota(orgId);
+  if (!quota.ok) return { ok: false, error: quota.message };
 
   const parsed = createAssessmentSchema.safeParse({
     title: String(formData.get("title") ?? ""),
@@ -395,6 +402,11 @@ export async function startAssessmentSession(
         "This assessment is misconfigured. Please contact the organization.",
     };
   }
+
+  // The cap is per assessment and never resets, so it is checked at the last
+  // moment before an attempt is created rather than at invite time.
+  const seats = await checkParticipantQuota(assessment.id);
+  if (!seats.ok) return { ok: false, error: seats.message };
 
   const now = new Date();
   const timeLimitMs = assessment.timeLimitMs ?? 20 * 60_000;

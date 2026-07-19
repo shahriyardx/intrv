@@ -15,6 +15,7 @@ import {
 import { AiError } from "@/server/ai/client";
 import { type GradeItem, gradeShortAnswers } from "@/server/ai/grade";
 import { assertCanAccessSession } from "@/server/dal/interview";
+import { checkInterviewQuota } from "@/server/dal/limits";
 import { getViewer } from "@/server/dal/session";
 import { computeSessionScore, gradeLocally } from "@/server/grading/local";
 import { afterSessionGraded } from "@/server/learning/hooks";
@@ -50,6 +51,9 @@ export async function createInterviewSession(
   }
 
   const viewer = await getViewer();
+
+  const quota = await checkInterviewQuota(viewer);
+  if (!quota.ok) return { ok: false, error: quota.message };
 
   const session = await prisma.interviewSession.create({
     data: {

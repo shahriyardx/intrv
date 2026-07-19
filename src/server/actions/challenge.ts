@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import type { QuestionType } from "@/lib/schemas";
+import { checkInterviewQuota } from "@/server/dal/limits";
 import { getViewer } from "@/server/dal/session";
 
 export type ActionError = { ok: false; error: string };
@@ -51,6 +52,9 @@ export async function acceptChallenge(
   if (!source || source.questions.length === 0) {
     return { ok: false, error: "That challenge could not be found." };
   }
+
+  const quota = await checkInterviewQuota(viewer);
+  if (!quota.ok) return { ok: false, error: quota.message };
 
   const now = new Date();
   const timeLimitMs = source.timeLimitMs;

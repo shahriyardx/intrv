@@ -8,6 +8,7 @@ import {
   difficultySchema,
   topicSchema,
 } from "@/lib/schemas";
+import { checkInterviewQuota } from "@/server/dal/limits";
 import { getViewer } from "@/server/dal/session";
 import { harderDifficulty } from "@/server/learning/plan";
 
@@ -61,6 +62,9 @@ export async function startReviewSession(): Promise<ReviewActionError | never> {
     DIFFICULTIES[0],
   );
 
+  const quota = await checkInterviewQuota(viewer);
+  if (!quota.ok) return { ok: false, error: quota.message };
+
   const session = await prisma.interviewSession.create({
     data: {
       userId: viewer.userId,
@@ -95,6 +99,9 @@ export async function startPlannedSession(
   if (!parsedTopic.success || !parsedDifficulty.success) {
     return { ok: false, error: "That suggestion is no longer valid." };
   }
+
+  const quota = await checkInterviewQuota(viewer);
+  if (!quota.ok) return { ok: false, error: quota.message };
 
   const session = await prisma.interviewSession.create({
     data: {

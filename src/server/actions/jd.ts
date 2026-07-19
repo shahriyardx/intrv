@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { QUESTION_COUNTS, questionTypeSchema } from "@/lib/schemas";
 import { AiError } from "@/server/ai/client";
 import { extractJdProfile, type JdProfile, jdTextSchema } from "@/server/ai/jd";
+import { checkInterviewQuota } from "@/server/dal/limits";
 import { getViewer } from "@/server/dal/session";
 
 export type ActionError = { ok: false; error: string };
@@ -77,6 +78,9 @@ export async function createJdSession(
           : "We couldn't read that job description. Try pasting the main responsibilities and requirements.",
     };
   }
+
+  const quota = await checkInterviewQuota(viewer);
+  if (!quota.ok) return { ok: false, error: quota.message };
 
   const session = await prisma.interviewSession.create({
     data: {
