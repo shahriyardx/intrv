@@ -15,28 +15,23 @@ import {
   truncate,
   Wordmark,
 } from "@/lib/og";
-import { getSharedSession } from "@/server/dal/share";
+import { getPublicProfile } from "@/server/dal/profile";
 
-export const alt = "An Intrv result";
+export const alt = "An Intrv profile";
 export const size = OG_SIZE;
 export const contentType = "image/png";
-
-function formatScore(score: number | null): string {
-  if (score === null) return "—";
-  return Number.isInteger(score) ? `${score}%` : `${score.toFixed(1)}%`;
-}
 
 function Card({
   eyebrow,
   headline,
   byline,
-  score,
+  level,
   stats,
 }: {
   eyebrow: string;
   headline: string;
   byline?: string | null;
-  score: string | null;
+  level: string | null;
   stats: { label: string; value: string }[];
 }) {
   return (
@@ -64,14 +59,13 @@ function Card({
       </div>
 
       <div style={{ display: "flex", flexDirection: "column" }}>
-        {score ? (
-          // The acid bar sits under the numerals like a highlighter stroke —
-          // the one place on the card the accent is allowed to appear.
+        {level ? (
+          // The acid bar sits under the level like a highlighter stroke — the
+          // one place on the card the accent is allowed to appear.
           <div
             style={{
               display: "flex",
               position: "relative",
-              // Shrink-to-fit, so the stroke is only as wide as the numerals.
               alignSelf: "flex-start",
             }}
           >
@@ -80,21 +74,21 @@ function Card({
                 position: "absolute",
                 left: 0,
                 right: 0,
-                bottom: 18,
-                height: 30,
+                bottom: 14,
+                height: 24,
                 backgroundColor: ACCENT,
               }}
             />
             <span
               style={{
                 fontFamily: DISPLAY,
-                fontSize: 190,
-                letterSpacing: -8,
+                fontSize: 128,
+                letterSpacing: -5,
                 lineHeight: 1,
                 color: INK,
               }}
             >
-              {score}
+              {level}
             </span>
           </div>
         ) : null}
@@ -104,7 +98,7 @@ function Card({
             fontSize: 62,
             letterSpacing: -1.5,
             lineHeight: 1.05,
-            marginTop: score ? 28 : 0,
+            marginTop: level ? 28 : 0,
             color: INK,
           }}
         >
@@ -143,40 +137,60 @@ function Card({
 export default async function Image({
   params,
 }: {
-  params: Promise<{ shareId: string }>;
+  params: Promise<{ username: string }>;
 }) {
-  const { shareId } = await params;
+  const { username } = await params;
 
-  // The read is uncached and per-visitor by nature; connection() marks this
-  // request-time so cacheComponents doesn't try to prerender it.
+  // Per-visitor by nature; connection() marks this request-time so
+  // cacheComponents doesn't try to prerender it.
   await connection();
 
-  // Crawlers hit this endpoint with junk ids and dead links. Both must still
-  // come back as a branded image, never a throw.
-  const session = await getSharedSession(shareId).catch(() => null);
-  const fonts = await loadOgFonts();
+  // Crawlers hit this with junk handles. Every outcome must still be a branded
+  // image, never a throw.
+  const profile = await getPublicProfile(username).catch(() => null);
 
-  const card = session ? (
-    <Card
-      eyebrow="Verified result · Intrv"
-      headline={truncate(session.topic, 52)}
-      byline={
-        session.takerName ? `by ${truncate(session.takerName, 32)}` : null
-      }
-      score={formatScore(session.score)}
-      stats={[
-        { label: "Difficulty", value: session.difficulty.toLowerCase() },
-        { label: "Questions", value: String(session.questionCount) },
-      ]}
-    />
-  ) : (
-    <Card
-      eyebrow="AI interview practice"
-      headline="This result isn't here anymore."
-      score={null}
-      stats={[{ label: "Practice anything", value: "no account needed" }]}
-    />
-  );
+  // A private profile gets a card too, and it says nothing but the handle —
+  // the page itself discloses exactly that much, and no more.
+  const card =
+    profile === null ? (
+      <Card
+        eyebrow="AI interview practice"
+        headline="No such profile."
+        level={null}
+        stats={[{ label: "Practice anything", value: "no account needed" }]}
+      />
+    ) : profile.visibility === "private" ? (
+      <Card
+        eyebrow="Private profile · Intrv"
+        headline={truncate(profile.displayName, 42)}
+        byline={`@${truncate(profile.username, 32)}`}
+        level={null}
+        stats={[{ label: "Stats", value: "not shared" }]}
+      />
+    ) : (
+      <Card
+        eyebrow="Profile · Intrv"
+        headline={truncate(profile.displayName, 42)}
+        byline={`@${truncate(profile.username, 32)} · ${profile.level.title}`}
+        level={`Lv ${profile.level.level}`}
+        stats={[
+          { label: "XP", value: profile.xp.toLocaleString() },
+          { label: "Graded", value: String(profile.gradedCount) },
+          {
+            label: "Streak",
+            value: `${profile.currentStreak} ${
+              profile.currentStreak === 1 ? "day" : "days"
+            }`,
+          },
+          {
+            label: "Rank",
+            value: profile.rank === null ? "—" : `#${profile.rank}`,
+          },
+        ]}
+      />
+    );
+
+  const fonts = await loadOgFonts();
 
   return new ImageResponse(card, {
     ...size,

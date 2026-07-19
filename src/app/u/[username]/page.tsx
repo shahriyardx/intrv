@@ -1,10 +1,20 @@
-import { FlameIcon, LockSimpleIcon } from "@phosphor-icons/react/dist/ssr";
+import {
+  FlameIcon,
+  LockSimpleIcon,
+  SealCheckIcon,
+} from "@phosphor-icons/react/dist/ssr";
+import { format, formatDistanceToNow } from "date-fns";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { ActivityHeatmap } from "@/components/analytics/activity-heatmap";
 import { formatScore } from "@/components/analytics/format";
+import {
+  ScoreTrendChart,
+  type TrendDatum,
+} from "@/components/analytics/score-trend-chart";
 import { StatRow, StatTile } from "@/components/analytics/stat-tile";
+import { BadgeGrid } from "@/components/game/badge-grid";
 import { LevelBar } from "@/components/game/level-bar";
 import { SiteHeader } from "@/components/site-header";
 import { SiteNav } from "@/components/site-nav";
@@ -15,6 +25,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
   getPublicProfile,
+  type ProfileConcept,
+  type ProfileDifficulty,
   type ProfileRun,
   type PublicProfile,
 } from "@/server/dal/profile";
@@ -29,7 +41,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${profile.displayName} (@${profile.username})`,
     description:
       profile.visibility === "public"
-        ? `${profile.displayName}'s interview practice on Intrv.`
+        ? `Level ${profile.level.level} · ${profile.xp.toLocaleString()} XP · ${profile.gradedCount} graded interviews on Intrv.`
         : "This profile is private.",
   };
 }
@@ -62,7 +74,7 @@ async function Profile({ params }: Props) {
   if (!profile) notFound();
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-14">
       <ProfileHeader profile={profile} />
       {profile.visibility === "private" ? (
         <PrivateNotice />
@@ -76,10 +88,16 @@ async function Profile({ params }: Props) {
 function ProfileHeader({
   profile,
 }: {
-  profile: { displayName: string; username: string; image?: string | null };
+  profile: {
+    displayName: string;
+    username: string;
+    image?: string | null;
+    joinedAt?: Date;
+    level?: { level: number; title: string };
+  };
 }) {
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex flex-wrap items-center gap-4">
       {profile.image ? (
         // biome-ignore lint/performance/noImgElement: remote avatar from an arbitrary OAuth provider
         <img
@@ -94,15 +112,31 @@ function ProfileHeader({
       ) : (
         <span
           aria-hidden
-          className="flex size-14 items-center justify-center border bg-secondary font-mono text-sm text-secondary-foreground uppercase"
+          className="flex size-14 items-center justify-center border bg-secondary font-mono text-secondary-foreground text-sm uppercase"
         >
           {initials(profile.displayName)}
         </span>
       )}
-      <div>
+      <div className="min-w-0">
         <h1 className="font-display text-display-md">{profile.displayName}</h1>
-        <p className="font-mono text-muted-foreground text-sm">
-          @{profile.username}
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-muted-foreground text-sm">
+          <span>@{profile.username}</span>
+          {profile.level ? (
+            <>
+              <span aria-hidden>·</span>
+              <span className="text-[0.625rem] uppercase tracking-[0.12em]">
+                Level {profile.level.level} {profile.level.title}
+              </span>
+            </>
+          ) : null}
+          {profile.joinedAt ? (
+            <>
+              <span aria-hidden>·</span>
+              <span className="text-xs">
+                Joined {format(profile.joinedAt, "MMMM yyyy")}
+              </span>
+            </>
+          ) : null}
         </p>
       </div>
     </div>
@@ -127,8 +161,19 @@ function PrivateNotice() {
 }
 
 function PublicBody({ profile }: { profile: PublicProfile }) {
+  // Preformatted here: the chart is a client component and the axis needs a
+  // short string, not a Date crossing the boundary.
+  const trendData: TrendDatum[] = profile.trend.map((point) => ({
+    sessionId: point.sessionId,
+    topic: point.topic,
+    difficulty: point.difficulty,
+    score: point.score,
+    label: format(point.gradedAt, "d MMM"),
+    fullDate: format(point.gradedAt, "d MMM yyyy"),
+  }));
+
   return (
-    <div className="space-y-12">
+    <div className="space-y-14">
       <StatRow>
         <StatTile
           label="Rank"
@@ -138,6 +183,11 @@ function PublicBody({ profile }: { profile: PublicProfile }) {
           note={
             profile.rank === null ? "Not ranked yet" : "All-time leaderboard"
           }
+        />
+        <StatTile
+          label="Level"
+          value={profile.level.level}
+          note={`${profile.level.title} · ${profile.xp.toLocaleString()} XP`}
         />
         <StatTile
           label="Streak"
@@ -154,55 +204,134 @@ function PublicBody({ profile }: { profile: PublicProfile }) {
           note={`Best ${profile.longestStreak}`}
         />
         <StatTile
-          label="Level"
-          value={profile.level.level}
-          note={`${profile.level.title} · ${profile.xp.toLocaleString()} XP`}
-        />
-        <StatTile
           label="Average"
           value={
             profile.averageScore === null
               ? "—"
               : `${formatScore(profile.averageScore)}%`
           }
-          note="Across graded interviews"
+          note={`${profile.gradedCount} graded${
+            profile.perfectCount > 0 ? ` · ${profile.perfectCount} perfect` : ""
+          }`}
         />
       </StatRow>
 
       <LevelBar level={profile.level} />
-
-      <section className="space-y-5">
-        <div className="flex items-baseline justify-between gap-4">
-          <DataLabel as="h2">Activity</DataLabel>
-          <span className="font-mono text-muted-foreground text-xs">
-            {profile.calendar.total} in the last year
-          </span>
-        </div>
-        <ActivityHeatmap calendar={profile.calendar} />
-      </section>
 
       {profile.gradedCount === 0 ? (
         <p className="text-muted-foreground text-sm">
           No graded interviews yet.
         </p>
       ) : (
-        <div className="grid gap-12 lg:grid-cols-2">
-          <BestRuns runs={profile.bestRuns} />
-          <TopTopics topics={profile.topTopics} />
-        </div>
+        <>
+          <section className="space-y-5">
+            <div className="flex items-baseline justify-between gap-4">
+              <DataLabel as="h2">Badges</DataLabel>
+              <span className="font-mono text-muted-foreground text-xs tabular">
+                {profile.badgesEarned} / {profile.badgeTotal}
+              </span>
+            </div>
+            <BadgeGrid badges={profile.badges} />
+          </section>
+
+          {/* One point is a dot, not a trend — show the number instead. */}
+          {trendData.length > 1 ? (
+            <section className="space-y-5">
+              <div className="flex items-baseline justify-between gap-4">
+                <DataLabel as="h2">Score over time</DataLabel>
+                <span className="font-mono text-muted-foreground text-xs">
+                  last {trendData.length} graded
+                </span>
+              </div>
+              <ScoreTrendChart data={trendData} />
+            </section>
+          ) : null}
+
+          <section className="space-y-5">
+            <div className="flex items-baseline justify-between gap-4">
+              <DataLabel as="h2">Activity</DataLabel>
+              <span className="font-mono text-muted-foreground text-xs">
+                {profile.calendar.total} in the last year
+              </span>
+            </div>
+            <ActivityHeatmap calendar={profile.calendar} />
+          </section>
+
+          <DifficultySpread spread={profile.difficultySpread} />
+
+          <div className="grid gap-12 lg:grid-cols-2">
+            <RunList
+              title="Best runs"
+              runs={profile.bestRuns}
+              showDate={false}
+            />
+            <RunList title="Recent" runs={profile.recentRuns} showDate />
+          </div>
+
+          <div className="grid gap-12 lg:grid-cols-2">
+            <TopTopics topics={profile.topTopics} />
+            <StrongConcepts concepts={profile.strongConcepts} />
+          </div>
+        </>
       )}
     </div>
   );
 }
 
-function BestRuns({ runs }: { runs: ProfileRun[] }) {
+function DifficultySpread({ spread }: { spread: ProfileDifficulty[] }) {
+  if (spread.length === 0) return null;
+
   return (
     <section className="space-y-5">
-      <DataLabel as="h2">Best runs</DataLabel>
+      <DataLabel as="h2">Where they practise</DataLabel>
+      <ul className="space-y-2.5">
+        {spread.map((row) => (
+          <li key={row.difficulty} className="flex items-center gap-4 text-sm">
+            <span className="w-20 shrink-0 font-mono text-[0.625rem] text-muted-foreground uppercase tracking-[0.12em]">
+              {row.difficulty.toLowerCase()}
+            </span>
+            <span
+              aria-hidden
+              className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary"
+            >
+              <span
+                className="block h-full rounded-full bg-primary"
+                style={{ width: `${row.share}%` }}
+              />
+            </span>
+            <span className="w-20 shrink-0 text-right font-mono text-muted-foreground text-xs tabular">
+              {row.count} {row.count === 1 ? "run" : "runs"}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function RunList({
+  title,
+  runs,
+  showDate,
+}: {
+  title: string;
+  runs: ProfileRun[];
+  showDate: boolean;
+}) {
+  return (
+    <section className="space-y-5">
+      <DataLabel as="h2">{title}</DataLabel>
       <ul className="divide-y border-t">
         {runs.map((run) => (
           <li key={run.id} className="flex items-center gap-4 py-3 text-sm">
-            <span className="min-w-0 flex-1 truncate">{run.topic}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate">{run.topic}</span>
+              {showDate ? (
+                <span className="mt-0.5 block font-mono text-[0.625rem] text-muted-foreground uppercase tracking-[0.12em]">
+                  {formatDistanceToNow(run.gradedAt, { addSuffix: true })}
+                </span>
+              ) : null}
+            </span>
             <Badge variant="outline" className="text-[0.625rem]">
               {run.difficulty.toLowerCase()}
             </Badge>
@@ -248,6 +377,46 @@ function TopTopics({
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+/**
+ * Strengths only. The dashboard's mastery map is weakest-first because it is a
+ * study tool for its owner; a public page does not publish what someone keeps
+ * getting wrong.
+ */
+function StrongConcepts({ concepts }: { concepts: ProfileConcept[] }) {
+  return (
+    <section className="space-y-5">
+      <DataLabel as="h2">Strongest concepts</DataLabel>
+      {concepts.length === 0 ? (
+        <p className="text-muted-foreground text-sm">
+          Not enough answered questions on any one concept yet.
+        </p>
+      ) : (
+        <ul className="divide-y border-t">
+          {concepts.map((c) => (
+            <li
+              key={c.concept}
+              className="flex items-center gap-3 py-3 text-sm"
+            >
+              <SealCheckIcon
+                aria-hidden
+                weight="fill"
+                className="size-3.5 shrink-0 text-muted-foreground"
+              />
+              <span className="min-w-0 flex-1 truncate">{c.concept}</span>
+              <span className="shrink-0 font-mono text-[0.625rem] text-muted-foreground uppercase tracking-[0.12em]">
+                {c.attempts} seen
+              </span>
+              <span className="w-12 shrink-0 text-right font-mono tabular">
+                {Math.round(c.correctRate)}%
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
