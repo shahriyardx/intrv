@@ -6,6 +6,8 @@ import { z } from "zod";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { SLUG_MAX, SLUG_PATTERN } from "@/lib/slug";
+import { generateBlogPost } from "@/server/ai/blog";
+import { AiError } from "@/server/ai/client";
 import { requireFreshAdmin } from "@/server/dal/admin";
 
 export type PostActionState =
@@ -194,4 +196,83 @@ export async function deletePostAction(
 
   revalidateBlog(post.slug);
   redirect("/admin/posts");
+}
+
+export type GeneratePostState =
+  | {
+      ok: true;
+      post: {
+        title: string;
+        slug: string;
+        excerpt: string;
+        body: string;
+      };
+      /** Shown to the operator so they know what the research pass did. */
+      note: string;
+    }
+  | { ok: false; error: string };
+
+/**
+ * Draft a post with the model.
+ *
+ * Returns the draft rather than saving it: the operator reads it, edits it, and
+ * publishes deliberately. Nothing generated reaches a public page without a
+ * person pressing publish, which is the only real defence against shipping a
+ * piece that is wrong or reads like a machine wrote it.
+ *
+ * Titles already published are passed in so the generator can avoid re-covering
+ * ground — see server/ai/blog.ts for how uniqueness and link verification work.
+ */
+export async function generatePostAction(
+  _prev: unknown,
+  formData: FormData,
+): Promise<GeneratePostState> {
+  const admin = await requireFreshAdmin();
+  // Same flat refusal as the rest of this surface — NOT_FOUND is typed for the
+  // save/delete actions, so it is restated here rather than widened.
+  if (!admin) return { ok: false, error: "Not found." };
+
+  const topicRaw = String(formData.get("topic") ?? "").trim();
+  if (topicRaw.length > 120) {
+    return { ok: false, error: "That topic is too long." };
+  }
+
+  const existing = await prisma.post.findMany({
+    select: { title: true },
+    orderBy: { createdAt: "desc" },
+    take: 40,
+  });
+
+  try {
+    const draft = await generateBlogPost({
+      topic: topicRaw || null,
+      existingTitles: existing.map((post) => post.title),
+    });
+
+    const parts = [
+      draft.linksKept > 0
+        ? `${draft.linksKept} link${draft.linksKept === 1 ? "" : "s"} verified.`
+        : "No links survived verification.",
+      draft.linksDropped > 0
+        ? `${draft.linksDropped} dead link${draft.linksDropped === 1 ? "" : "s"} removed.`
+        : null,
+    ].filter(Boolean);
+
+    return {
+      ok: true,
+      post: {
+        title: draft.title,
+        slug: draft.slug,
+        excerpt: draft.excerpt,
+        body: draft.body,
+      },
+      note: parts.join(" "),
+    };
+  } catch (error) {
+    const message =
+      error instanceof AiError
+        ? error.message
+        : "The model didn't return a usable draft.";
+    return { ok: false, error: message };
+  }
 }

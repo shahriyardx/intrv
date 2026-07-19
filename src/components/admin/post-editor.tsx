@@ -30,7 +30,11 @@ import { DataLabel } from "@/components/ui/prose";
 import { Textarea } from "@/components/ui/textarea";
 import { SLUG_MAX, slugify } from "@/lib/slug";
 import { cn } from "@/lib/utils";
-import { deletePostAction, savePostAction } from "@/server/actions/post";
+import {
+  deletePostAction,
+  generatePostAction,
+  savePostAction,
+} from "@/server/actions/post";
 
 type Post = {
   id: string;
@@ -72,7 +76,7 @@ export function PostEditor({ post }: { post?: Post }) {
   });
   const [serverError, setServerError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [preview, setPreview] = useState(false);
+  const [mode, setMode] = useState<"write" | "raw" | "preview">("write");
   // A stable ref, not the submit event's currentTarget: RHF awaits async
   // validation first, by which point React has nulled currentTarget. The clicked
   // submit button's intent is captured on its onClick, since a ref-built
@@ -113,8 +117,25 @@ export function PostEditor({ post }: { post?: Post }) {
     });
   });
 
+  const applyDraft = (draft: {
+    title: string;
+    slug: string;
+    excerpt: string;
+    body: string;
+  }) => {
+    // Overwrites the whole form, which is why it is only offered on an empty
+    // one — see DraftPanel.
+    form.setValue("title", draft.title, { shouldValidate: true });
+    form.setValue("slug", draft.slug, { shouldValidate: true });
+    form.setValue("excerpt", draft.excerpt, { shouldValidate: true });
+    form.setValue("body", draft.body, { shouldValidate: true });
+    setSlugTouched(true);
+  };
+
   return (
     <div className="space-y-6">
+      <DraftPanel onDraft={applyDraft} disabled={pending} />
+
       <form ref={formRef} onSubmit={onSubmit} noValidate className="space-y-6">
         {post ? <input type="hidden" name="id" value={post.id} /> : null}
 
@@ -215,13 +236,18 @@ export function PostEditor({ post }: { post?: Post }) {
             </div>
             <div className="flex gap-1">
               <ToggleButton
-                active={!preview}
-                onClick={() => setPreview(false)}
+                active={mode === "write"}
+                onClick={() => setMode("write")}
                 label="Write"
               />
               <ToggleButton
-                active={preview}
-                onClick={() => setPreview(true)}
+                active={mode === "raw"}
+                onClick={() => setMode("raw")}
+                label="Raw"
+              />
+              <ToggleButton
+                active={mode === "preview"}
+                onClick={() => setMode("preview")}
                 label="Preview"
               />
             </div>
@@ -232,7 +258,11 @@ export function PostEditor({ post }: { post?: Post }) {
               keeps the textarea's old submit path intact. */}
           <input type="hidden" {...form.register("body")} />
 
-          <div className={cn(preview && "hidden")}>
+          {/* Both editors stay mounted and share one value, so switching modes
+              mid-post never drops what was typed. The rich editor adopts an
+              external change to `value`, which is how a raw edit shows up in
+              WYSIWYG when you switch back. */}
+          <div className={cn(mode !== "write" && "hidden")}>
             <RichEditor
               value={body}
               onChange={(markdown) =>
@@ -242,7 +272,26 @@ export function PostEditor({ post }: { post?: Post }) {
             />
           </div>
 
-          {preview ? (
+          {mode === "raw" ? (
+            <Textarea
+              id="body-raw"
+              // Textarea is field-sizing-content, so `rows` does nothing and it
+              // collapses to the height of whatever is in it. Pinned to the
+              // same floor as the rich editor so switching modes doesn't
+              // resize the page under you; it still grows past that.
+              className="min-h-[26rem] font-mono text-sm leading-relaxed"
+              placeholder={"## A heading\n\nA paragraph."}
+              aria-label="Raw markdown"
+              value={body}
+              onChange={(event) =>
+                form.setValue("body", event.target.value, {
+                  shouldValidate: true,
+                })
+              }
+            />
+          ) : null}
+
+          {mode === "preview" ? (
             <div className="min-h-[20rem] rounded-md border px-6 py-4">
               {body.trim() ? (
                 // The same component the public page uses — a preview through a
@@ -322,6 +371,81 @@ function Counter({ value, max }: { value: number; max: number }) {
     >
       {value}/{max}
     </p>
+  );
+}
+
+/**
+ * Draft a post with the model.
+ *
+ * Deliberately writes into the form rather than saving: nothing generated
+ * reaches a public page without someone reading it and pressing publish. It is
+ * also the only guard against shipping a piece that is wrong, and no amount of
+ * prompt work replaces a person looking at it.
+ */
+function DraftPanel({
+  onDraft,
+  disabled,
+}: {
+  onDraft: (draft: {
+    title: string;
+    slug: string;
+    excerpt: string;
+    body: string;
+  }) => void;
+  disabled?: boolean;
+}) {
+  const [topic, setTopic] = useState("");
+  const [pending, startTransition] = useTransition();
+  const [note, setNote] = useState<string | null>(null);
+
+  const generate = () => {
+    setNote(null);
+    startTransition(async () => {
+      const data = new FormData();
+      data.set("topic", topic);
+      const result = await generatePostAction(null, data);
+      if (result.ok) {
+        onDraft(result.post);
+        setNote(result.note);
+        toast.success("Draft written. Read it before publishing.");
+      } else {
+        toast.error(result.error);
+      }
+    });
+  };
+
+  return (
+    <div className="space-y-3 border border-dashed p-4">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="flex-1 space-y-1.5">
+          <Label htmlFor="ai-topic">
+            <DataLabel as="span">Draft with AI</DataLabel>
+          </Label>
+          <Input
+            id="ai-topic"
+            value={topic}
+            maxLength={120}
+            onChange={(event) => setTopic(event.target.value)}
+            placeholder="A topic, or leave blank to let it pick"
+            disabled={pending || disabled}
+          />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={generate}
+          disabled={pending || disabled}
+        >
+          {pending ? "Writing…" : "Draft"}
+        </Button>
+      </div>
+      <p className="text-muted-foreground text-xs">
+        {pending
+          ? "Researching, writing and checking every link it cites. This takes a minute."
+          : (note ??
+            "Fills the form below — it never publishes. Links are verified over the network; dead ones are stripped before you see it.")}
+      </p>
+    </div>
   );
 }
 

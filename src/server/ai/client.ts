@@ -81,7 +81,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 type CallOptions<T> = {
   model: ModelId;
-  purpose: "generate" | "grade" | "extract";
+  purpose: "generate" | "grade" | "extract" | "blog";
   sessionId?: string | null;
   /** Static prefix first — it is what DeepSeek's automatic cache matches on. */
   system: string;
